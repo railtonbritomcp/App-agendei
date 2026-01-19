@@ -1,0 +1,7 @@
+{
+  "name": "Agenda de Voz Inteligente",
+  "description": "Sistema avançado de agendamento e relatórios de reunião por voz com IA Gemini.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

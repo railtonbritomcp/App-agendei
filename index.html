@@ -1,0 +1,131 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <title>AGENDEI - Executive Voice Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold-primary: #FFD700;
+            --gold-dark: #B8860B;
+            --emerald-vibrant: #10b981;
+            --royal-blue: #1e40af;
+            --deep-blue: #0f172a;
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: #0f172a;
+            overflow-x: hidden; 
+            color: #ffffff;
+            min-height: 100vh;
+            /* Evita bounce no iOS */
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        #root {
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Animated Mesh Background */
+        .mesh-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+            background: radial-gradient(circle at 50% 50%, #1e3a8a 0%, #0f172a 100%);
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(140px);
+            opacity: 0.4;
+            animation: float 25s infinite alternate ease-in-out;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+            50% { transform: translate(15vw, 10vh) scale(1.3) rotate(45deg); }
+            100% { transform: translate(-5vw, 20vh) scale(0.9) rotate(-45deg); }
+        }
+
+        .orb-1 { width: 80vw; height: 80vw; background: var(--royal-blue); top: -10vh; left: -10vw; animation-delay: 0s; }
+        .orb-2 { width: 70vw; height: 70vw; background: var(--emerald-vibrant); bottom: -10vh; right: -10vw; animation-delay: -7s; opacity: 0.25; }
+        .orb-3 { width: 50vw; height: 50vw; background: var(--gold-primary); top: 20vh; right: 5vw; animation-delay: -12s; opacity: 0.15; }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 20px 60px -15px rgba(0, 0, 0, 0.5);
+        }
+
+        .text-gradient {
+            background: linear-gradient(135deg, #FFD700 0%, #ffffff 50%, #38bdf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .bg-gold-gradient { 
+            background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%); 
+        }
+
+        .bg-emerald-gradient {
+            background: linear-gradient(135deg, #10b981 0%, #064e3b 100%);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "date-fns/": "https://esm.sh/date-fns@^4.1.0/",
+    "date-fns": "https://esm.sh/date-fns@^4.1.0"
+  }
+}
+</script>
+</head>
+<body>
+    <div class="mesh-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+    <div id="root"></div>
+
+    <script>
+      // Registro do Service Worker para PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('PWA Service Worker registrado'))
+            .catch(err => console.log('Erro ao registrar SW:', err));
+        });
+      }
+    </script>
+</body>
+</html>
