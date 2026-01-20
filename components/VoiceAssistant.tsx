@@ -13,11 +13,6 @@ interface VoiceAssistantProps {
   selectedLanguage: { id: string; label: string; name: string; locale: any };
 }
 
-const TRANSLATIONS: Record<string, any> = {
-  pt: { status: 'Ouvindo Comando', placeholder: 'Diga horário e pautas...', agendadoPara: 'Sucesso: Evento Agendado' },
-  en: { status: 'Listening Command', placeholder: 'Speak time and topics...', agendadoPara: 'Success: Event Scheduled' },
-};
-
 const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onAddAppointment, currentSelectedDate, selectedLanguage }) => {
   const [voiceState, setVoiceState] = useState<VoiceState>(VoiceState.IDLE);
   const [transcription, setTranscription] = useState<string>('');
@@ -26,8 +21,6 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onAddAppointment, curre
   const audioContextRef = useRef<AudioContext | null>(null);
   const sessionRef = useRef<any>(null);
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
-
-  const t = TRANSLATIONS[selectedLanguage.id] || TRANSLATIONS.pt;
 
   const stopAssistant = useCallback(() => {
     if (scriptProcessorRef.current) { scriptProcessorRef.current.disconnect(); scriptProcessorRef.current = null; }
@@ -67,14 +60,14 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onAddAppointment, curre
                 }
               }
             }
-            if (message.serverContent?.inputTranscription) setTranscription(prev => prev + message.serverContent!.inputTranscription!.text);
+            if (message.serverContent?.inputTranscription) setTranscription(message.serverContent.inputTranscription.text);
           },
           onerror: () => setVoiceState(VoiceState.ERROR),
           onclose: () => stopAssistant()
         },
         config: {
           responseModalities: [Modality.AUDIO],
-          systemInstruction: `Crie agendamentos em ${format(currentSelectedDate, 'yyyy-MM-dd')}.`,
+          systemInstruction: `Crie agendamentos executivos para o dia ${format(currentSelectedDate, 'yyyy-MM-dd')}. Seja breve, polido e profissional.`,
           tools: [{ 
             functionDeclarations: [{ 
               name: 'create_appointment', 
@@ -99,27 +92,31 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onAddAppointment, curre
   };
 
   return (
-    <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[150] flex flex-col items-center gap-4 w-full max-w-sm px-4">
+    <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[400] flex flex-col items-center gap-5 w-full max-w-xs px-6">
+      
       {lastActionStatus === 'success' && (
-        <div className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-emerald-500 text-slate-900 shadow-2xl animate-in slide-in-from-bottom-4 duration-500 border-2 border-white/40">
-          <CheckCircle2 size={20} strokeWidth={3} />
-          <span className="text-[11px] font-black uppercase tracking-widest">{t.agendadoPara}</span>
+        <div className="px-5 py-2.5 rounded-2xl bg-emerald-600 text-white shadow-2xl flex items-center gap-3 border border-white/20 animate-in slide-in-from-bottom-3">
+          <CheckCircle2 size={16} />
+          <span className="text-[10px] font-black uppercase tracking-widest">Sucesso</span>
         </div>
       )}
+
       {voiceState !== VoiceState.IDLE && (
-        <div className="glass-card bg-slate-900/90 border-yellow-400/40 p-6 rounded-[2rem] shadow-2xl w-full animate-in fade-in zoom-in duration-300">
-          <div className="flex items-center gap-3 mb-2">
-             <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse shadow-[0_0_10px_#FFD700]" />
-             <span className="text-[9px] font-black text-yellow-400 uppercase tracking-[0.3em]">{t.status}</span>
+        <div className="glass-card bg-white/95 border-emerald-100 p-5 rounded-3xl w-full animate-in zoom-in duration-300 shadow-2xl">
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className="w-1.5 h-1.5 bg-amber-600 rounded-full animate-pulse"></div>
+            <span className="text-[8px] font-black text-amber-700 uppercase tracking-[0.2em]">IA Estratégica Ativa</span>
           </div>
-          <p className="text-white font-bold italic text-sm truncate opacity-90 leading-relaxed">{transcription || t.placeholder}</p>
+          <p className="text-emerald-950 text-[11px] font-bold italic opacity-80 leading-snug truncate">{transcription || "Aguardando áudio..."}</p>
         </div>
       )}
-      <button onClick={voiceState === VoiceState.IDLE ? startAssistant : stopAssistant} 
-        className={`p-8 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-500 transform active:scale-90 border-2 border-white/30 
-        ${voiceState === VoiceState.IDLE ? 'bg-gold-gradient text-slate-900' : 'bg-red-600 text-white'}`}>
-        {voiceState === VoiceState.CONNECTING ? <Loader2 size={32} className="animate-spin" /> : 
-         voiceState === VoiceState.IDLE ? <Mic size={32} strokeWidth={3} /> : <MicOff size={32} strokeWidth={3} />}
+
+      <button 
+        onClick={voiceState === VoiceState.IDLE ? startAssistant : stopAssistant} 
+        className={`w-16 h-16 rounded-3xl flex items-center justify-center transition-all duration-500 shadow-2xl border border-white/40 btn-press
+        ${voiceState === VoiceState.IDLE ? 'bg-amazon-premium text-white' : 'bg-red-600 text-white'}`}>
+        {voiceState === VoiceState.CONNECTING ? <Loader2 size={24} className="animate-spin" /> : 
+         voiceState === VoiceState.IDLE ? <Mic size={24} strokeWidth={2.5} /> : <MicOff size={24} strokeWidth={2.5} />}
       </button>
     </div>
   );
