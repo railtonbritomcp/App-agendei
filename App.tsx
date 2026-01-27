@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Appointment, MeetingReport } from './types';
 import CalendarView from './components/CalendarView';

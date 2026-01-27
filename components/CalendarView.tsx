@@ -1,7 +1,19 @@
 
 import React from 'react';
 import { Appointment } from '../types';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isToday as isDateToday } from 'date-fns';
+import { 
+  format, 
+  endOfMonth, 
+  eachDayOfInterval, 
+  isSameDay, 
+  addMonths, 
+  endOfWeek, 
+  isToday
+} from 'date-fns';
+// Fixed: Explicitly importing functions that were reported as missing from the main package index
+import { startOfMonth } from 'date-fns/startOfMonth';
+import { subMonths } from 'date-fns/subMonths';
+import { startOfWeek } from 'date-fns/startOfWeek';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 
 interface CalendarViewProps {
@@ -26,7 +38,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ appointments, selectedDate,
 
   return (
     <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl w-full text-slate-800 animate-in fade-in duration-700">
-      {/* Header do Calendário */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-amber-500 shadow-sm border border-slate-100">
@@ -56,19 +67,17 @@ const CalendarView: React.FC<CalendarViewProps> = ({ appointments, selectedDate,
         </div>
       </div>
 
-      {/* Dias da Semana */}
       <div className="grid grid-cols-7 mb-4">
         {weekDayLabels.map((day, i) => (
           <div key={i} className="text-center text-[10px] font-black text-slate-400 uppercase tracking-tighter">{day}</div>
         ))}
       </div>
 
-      {/* Grade de Dias */}
       <div className="grid grid-cols-7 gap-2">
         {days.map((day, idx) => {
           const isSelectedMonth = isSameDay(startOfMonth(day), monthStart);
           const isSelected = isSameDay(day, selectedDate);
-          const isToday = isDateToday(day);
+          const isDayToday = isToday(day);
           const hasApps = appointments.some(app => app.date === format(day, 'yyyy-MM-dd'));
 
           return (
@@ -80,7 +89,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ appointments, selectedDate,
                 ${!isSelectedMonth ? 'opacity-0 pointer-events-none' : 'cursor-pointer'}
                 ${isSelected 
                   ? 'bg-[#021526] text-white shadow-lg scale-105 z-10 border border-amber-500/30' 
-                  : isToday 
+                  : isDayToday 
                     ? 'bg-slate-50 text-[#021526] border-2 border-[#021526]' 
                     : 'bg-white border border-slate-50 hover:bg-slate-50 hover:border-slate-200'}
               `}
@@ -89,7 +98,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ appointments, selectedDate,
                 {format(day, 'd')}
               </span>
 
-              {/* Indicador de Compromisso - Ponto simples abaixo do número */}
               {hasApps && (
                 <div className={`mt-0.5 w-1 h-1 rounded-full ${isSelected ? 'bg-amber-400' : 'bg-amber-500'}`}></div>
               )}

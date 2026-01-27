@@ -5,10 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#022c22">
+    <meta name="description" content="Agendei - Plataforma de Testes Executivos">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="manifest.json">
-    <title>AGENDEI - Amazon Executive Suite</title>
+    <link rel="manifest" href="./manifest.json">
+    <title>AGENDEI | Executive Suite</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -16,7 +17,6 @@
             --amazon-green: #064e3b;
             --amazon-gold: #d97706;
             --deep-river: #021526;
-            --glass-bg: rgba(6, 78, 59, 0.22);
         }
 
         body { 
@@ -46,14 +46,6 @@
             background: radial-gradient(circle at 50% 50%, #032030 0%, #021526 100%);
         }
 
-        .glass-card {
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-
         .logo-amazon {
             background: linear-gradient(180deg, #fef3c7 0%, #d97706 100%);
             -webkit-background-clip: text;
@@ -61,18 +53,19 @@
             font-weight: 900;
         }
 
-        .premium-glow {
-            box-shadow: 0 0 40px -10px rgba(217, 119, 6, 0.4);
-        }
-
-        .bg-amazon-premium { 
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); 
+        .bg-amazon-premium {
+            background: linear-gradient(135deg, #064e3b 0%, #022c22 100%);
         }
 
         .btn-press:active { transform: scale(0.96); transition: transform 0.1s; }
 
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+
+        .staging-grid {
+            background-image: radial-gradient(rgba(217, 119, 6, 0.05) 1px, transparent 0);
+            background-size: 30px 30px;
+        }
     </style>
 <script type="importmap">
 {
@@ -88,7 +81,7 @@
 }
 </script>
 </head>
-<body>
+<body class="staging-grid">
     <div class="mesh-bg"></div>
     <div id="root"></div>
 </body>
