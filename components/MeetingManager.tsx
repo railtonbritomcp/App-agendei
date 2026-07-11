@@ -1,134 +1,200 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI, Type, LiveServerMessage, Modality } from '@google/genai';
 import { VoiceState, MeetingReport, Appointment } from '../types';
-import { Mic, Square, CheckCircle, Loader2, Sparkles, RefreshCcw, XCircle } from 'lucide-react';
-import { createBlob } from '../utils/audio-helpers';
+import { Mic, Square, CheckCircle, Loader2, Sparkles, RefreshCcw, XCircle, Pause, Play } from 'lucide-react';
 
 interface MeetingManagerProps {
   activeAppointment: Appointment | null;
   onReportGenerated: (report: MeetingReport) => void;
   selectedLanguage: { id: string; label: string; name: string; locale: any };
+  onTimerUpdate?: (time: number) => void;
+  onRecordingStateChange?: (isRecording: boolean) => void;
 }
 
 const TRANSLATIONS: Record<string, any> = {
-  pt: { sessao: 'CAPTURA ATIVA', caption: 'INICIAR GRAVAÇÃO', finalizar: 'GERAR ATA', ouvindo: 'TRANSCREVENDO...', redigindo: 'REDIGINDO ATA...', sintetizando: 'PROCESSANDO...', erro: 'ERRO DE CONEXÃO', tentar: 'REINICIAR', sintese: 'ANÁLISE IA', fidelidade: 'PRECISÃO', silenciando: 'CANAL DE ÁUDIO ATIVO', regravar: 'DESCARTAR' },
-  en: { sessao: 'ACTIVE CAPTURE', caption: 'START RECORDING', finalizar: 'GENERATE REPORT', ouvindo: 'TRANSCRIBING...', redigindo: 'DRAFTING...', sintetizando: 'PROCESSING...', erro: 'CONNECTION ERROR', tentar: 'RETRY', sintese: 'AI ANALYSIS', fidelidade: 'PRECISION', silenciando: 'ACTIVE CHANNEL', regravar: 'DISCARD' },
+  pt: { sessao: 'CAPTURA ATIVA', caption: 'GRAVE OU COMENTE OS PRINCIPAIS PONTOS', finalizar: 'ENCERRAR E GERAR ATAS', ouvindo: 'TRANSCREVENDO...', redigindo: 'REDIGINDO ATA...', sintetizando: 'PROCESSANDO...', erro: 'ERRO DE CONEXÃO', tentar: 'REINICIAR', sintese: 'ANÁLISE DE AUTENTICIDADE', fidelidade: 'PRECISÃO', silenciando: 'CANAL DE ÁUDIO ATIVO', regravar: 'DESCARTAR' },
+  en: { sessao: 'ACTIVE CAPTURE', caption: 'START RECORDING', finalizar: 'GENERATE REPORT', ouvindo: 'TRANSCRIBING...', redigindo: 'DRAFTING...', sintetizando: 'PROCESSING...', erro: 'CONNECTION ERROR', tentar: 'RETRY', sintese: 'AUTHENTICITY ANALYSIS', fidelidade: 'PRECISION', silenciando: 'ACTIVE CHANNEL', regravar: 'DISCARD' },
 };
 
-const MeetingManager: React.FC<MeetingManagerProps> = ({ activeAppointment, onReportGenerated, selectedLanguage }) => {
+const MeetingManager: React.FC<MeetingManagerProps> = ({ activeAppointment, onReportGenerated, selectedLanguage, onTimerUpdate, onRecordingStateChange }) => {
   const [status, setStatus] = useState<VoiceState>(VoiceState.IDLE);
   const [timer, setTimer] = useState(0);
   const [transcriptBuffer, setTranscriptBuffer] = useState('');
+  const [isPaused, setIsPaused] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
   
   const intervalRef = useRef<any>(null);
-  const sessionRef = useRef<any>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const recognitionRef = useRef<any>(null);
   const transcriptRef = useRef('');
   const isStoppingRef = useRef(false);
+  const isPausedRef = useRef(false);
+  const timerRef = useRef(0);
 
   const t = TRANSLATIONS[selectedLanguage.id] || TRANSLATIONS.pt;
 
   useEffect(() => {
-    return () => { stopAudioTracks(); };
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (recognitionRef.current) recognitionRef.current.stop();
+    };
   }, []);
 
-  const stopAudioTracks = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (scriptProcessorRef.current) { scriptProcessorRef.current.disconnect(); scriptProcessorRef.current = null; }
-    if (streamRef.current) { streamRef.current.getTracks().forEach(track => track.stop()); streamRef.current = null; }
-    if (sessionRef.current) { sessionRef.current.close(); sessionRef.current = null; }
-  };
-
   const startRecording = async () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      alert("Seu navegador não suporta reconhecimento de voz.");
+      return;
+    }
+
     try {
       isStoppingRef.current = false;
       setStatus(VoiceState.RECORDING);
       setTranscriptBuffer('');
       transcriptRef.current = '';
       setTimer(0);
+      timerRef.current = 0;
+      setMicError(null);
       
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-      
-      const sessionPromise = ai.live.connect({
-        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
-        callbacks: {
-          onopen: () => {
-            const source = audioContext.createMediaStreamSource(stream);
-            const scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
-            scriptProcessorRef.current = scriptProcessor;
-            scriptProcessor.onaudioprocess = (e) => {
-              const pcmBlob = createBlob(e.inputBuffer.getChannelData(0));
-              sessionPromise.then(session => { if (session) session.sendRealtimeInput({ media: pcmBlob }); });
-            };
-            source.connect(scriptProcessor);
-            scriptProcessor.connect(audioContext.destination);
-          },
-          onmessage: async (message: LiveServerMessage) => {
-            if (message.serverContent?.inputTranscription) {
-              const newText = message.serverContent.inputTranscription.text;
-              transcriptRef.current += newText + ' ';
-              setTranscriptBuffer(transcriptRef.current);
-            }
-          },
-          onerror: () => setStatus(VoiceState.ERROR),
-          onclose: () => {}
-        },
-        config: { 
-          responseModalities: [Modality.AUDIO], 
-          inputAudioTranscription: {}, 
-          systemInstruction: "Transcrição fiel de reunião corporativa." 
+      const recognition = new SpeechRecognition();
+      recognition.lang = selectedLanguage.locale?.code || 'pt-BR';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event: any) => {
+        if (isPausedRef.current) return;
+        
+        let finalTranscript = '';
+        let interimTranscript = '';
+        for (let i = 0; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript + ' ';
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
         }
-      });
-      
-      sessionRef.current = await sessionPromise;
-      intervalRef.current = setInterval(() => setTimer(prev => prev + 1), 1000);
-    } catch (err) { setStatus(VoiceState.ERROR); }
+        const fullText = (finalTranscript + interimTranscript).trim();
+        transcriptRef.current = fullText;
+        setTranscriptBuffer(fullText);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("Erro Recognition:", event.error);
+        if (event.error !== 'no-speech') {
+          if (event.error === 'not-allowed') {
+            setMicError("Acesso ao microfone foi recusado ou bloqueado pelo navegador. Você ainda pode digitar, colar ou editar seus pontos livremente abaixo!");
+          } else {
+            setMicError(`Erro no microfone (${event.error}). Você ainda pode digitar, colar ou editar seus pontos livremente abaixo!`);
+          }
+        }
+      };
+
+      recognition.onend = () => {
+        if (!isStoppingRef.current && !isPausedRef.current) {
+          setTimeout(() => {
+            if (recognitionRef.current && !isStoppingRef.current && !isPausedRef.current) {
+              try {
+                recognitionRef.current.start();
+              } catch (e) {
+                console.error("Erro ao reiniciar SpeechRecognition no timeout:", e);
+              }
+            }
+          }, 1000);
+        }
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+
+      intervalRef.current = setInterval(() => {
+        if (isPausedRef.current) return;
+        timerRef.current += 1;
+        const newTime = timerRef.current;
+        setTimer(newTime);
+        if (onTimerUpdate) onTimerUpdate(newTime);
+      }, 1000);
+
+      if (onRecordingStateChange) onRecordingStateChange(true);
+    } catch (err) {
+      console.error("Erro ao iniciar gravação:", err);
+      setMicError("Não foi possível inicializar o microfone. Use a caixa abaixo para digitar!");
+    }
+  };
+
+  const togglePause = () => {
+    const newPausedState = !isPaused;
+    setIsPaused(newPausedState);
+    isPausedRef.current = newPausedState;
+    
+    if (newPausedState) {
+      if (recognitionRef.current) recognitionRef.current.stop();
+    } else {
+      if (recognitionRef.current) recognitionRef.current.start();
+    }
   };
 
   const stopRecordingAndProcess = async () => {
     if (isStoppingRef.current) return;
     isStoppingRef.current = true;
+    
+    if (onRecordingStateChange) onRecordingStateChange(false);
     const finalTranscript = transcriptRef.current.trim();
-    stopAudioTracks();
-    if (!finalTranscript) { setStatus(VoiceState.IDLE); isStoppingRef.current = false; return; }
+    
+    if (recognitionRef.current) recognitionRef.current.stop();
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
+    if (!finalTranscript) { 
+      alert("Nenhuma fala capturada. Por favor, fale mais alto ou verifique as permissões do microfone.");
+      setStatus(VoiceState.IDLE); 
+      isStoppingRef.current = false; 
+      return; 
+    }
+    
     setStatus(VoiceState.PROCESSING);
     
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
-        contents: `Processar transcrição para idioma ${selectedLanguage.name}: "${finalTranscript}"`,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              summary: { type: Type.STRING },
-              fullTranscript: { type: Type.STRING },
-              decisions: { type: Type.ARRAY, items: { type: Type.STRING } },
-              actionItems: { type: Type.ARRAY, items: { type: Type.STRING } }
-            },
-            required: ["summary", "fullTranscript", "decisions", "actionItems"]
-          }
-        }
+      const response = await fetch('/api/analyze-meeting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript: finalTranscript,
+          language: selectedLanguage.name,
+          termsAccepted: acceptedTerms,
+          activeAppointmentTitle: activeAppointment?.title
+        }),
       });
-      const result = JSON.parse(response.text || '{}');
+
+      if (!response.ok) {
+        let errMsg = "Erro ao processar reunião no servidor.";
+        try {
+          const errData = await response.json();
+          if (errData && errData.error) {
+            errMsg = errData.error;
+          }
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
+
+      const result = await response.json();
+      
       onReportGenerated({
         id: Math.random().toString(36).substr(2, 9),
         appointmentId: activeAppointment?.id || '',
         timestamp: new Date().toISOString(),
-        summary: result.summary,
-        decisions: result.decisions.map((d: string) => d.toUpperCase()),
-        actionItems: result.actionItems.map((a: string) => a.toUpperCase()),
+        markdownReport: result.markdownReport,
         fullTranscript: result.fullTranscript
       });
       setStatus(VoiceState.IDLE);
-    } catch (error) { setStatus(VoiceState.ERROR); }
+    } catch (error: any) { 
+      console.error("Erro no processamento IA:", error);
+      let friendlyMsg = error.message;
+      if (friendlyMsg.includes("GEMINI_API_KEY")) {
+        friendlyMsg = "A chave de API do Gemini (GEMINI_API_KEY) não está configurada! Por favor, configure sua chave no painel de configurações (Settings) do AI Studio no canto superior direito para ativar a geração de atas por Inteligência Artificial.";
+      }
+      alert(`Erro: ${friendlyMsg}`);
+      setStatus(VoiceState.ERROR); 
+    }
   };
 
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
@@ -137,70 +203,174 @@ const MeetingManager: React.FC<MeetingManagerProps> = ({ activeAppointment, onRe
   if (!activeAppointment) return null;
 
   return (
-    <div className="bg-white rounded-[2.5rem] p-8 text-emerald-950 shadow-2xl border border-emerald-50 relative overflow-hidden">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <span className="text-[9px] font-black text-amber-700 uppercase tracking-[0.3em] bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-lg mb-3 inline-block">{t.sessao}</span>
-          <h3 className="text-2xl font-black tracking-tight text-emerald-950 uppercase leading-none">{activeAppointment.title.toUpperCase()}</h3>
+    <div className="bg-[#FFF8D6] rounded-[2.5rem] p-2 text-[#0A1931] relative overflow-hidden shadow-xl border-2 border-[#FFD700]/30">
+      <div className="flex items-start justify-between mb-8 px-6 pt-6">
+        <div className="flex-1 pr-4">
+          <span className="text-[14px] font-black text-[#B8860B] uppercase tracking-[0.3em] bg-[#B8860B]/10 border border-[#B8860B]/20 px-5 py-2.5 rounded-full mb-4 inline-block">{t.sessao}</span>
+          <h3 className="text-3xl font-black tracking-tight text-[#0A1931] uppercase leading-none mb-3">{activeAppointment.title}</h3>
+          {activeAppointment.description && (
+            <div className="bg-black/5 p-4 rounded-xl border border-black/10">
+              <p className="text-[12px] font-black text-[#0A1931]/60 uppercase tracking-widest mb-1">Pautas da Reunião</p>
+              <p className="text-sm font-medium text-[#0A1931]/80 uppercase">{activeAppointment.description}</p>
+            </div>
+          )}
         </div>
         {isRecordingMode && (
-          <div className="flex items-center gap-3 px-4 py-2 bg-red-50 text-red-600 rounded-xl border border-red-100 shadow-sm">
-            <div className="w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse"></div>
-            <span className="text-[14px] font-black font-mono">{formatTime(timer)}</span>
+          <div className="flex items-center gap-3 px-5 py-2.5 bg-red-50 text-red-600 rounded-2xl border-2 border-red-100 shadow-sm shrink-0">
+            <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
+            <span className="text-[16px] font-black font-mono">{formatTime(timer)}</span>
           </div>
         )}
       </div>
 
-      <div className="flex flex-col items-center justify-center py-10 border border-emerald-50 rounded-[2.5rem] bg-emerald-50/20 mb-8 px-8 relative shadow-inner">
+      <div className="flex flex-col items-center justify-center py-8 sm:py-12 border-2 border-black/5 rounded-[2rem] sm:rounded-[3rem] bg-white/50 mb-6 sm:mb-8 px-4 sm:px-8 relative shadow-inner mx-2 sm:mx-4">
         {status === VoiceState.IDLE && (
-          <>
-            <button onClick={startRecording} className="w-18 h-18 bg-amazon-premium rounded-3xl shadow-2xl flex items-center justify-center text-white mb-6 hover:brightness-110 active:scale-95 transition-all btn-press">
-              <Mic size={32} strokeWidth={2} />
+          <div className="flex flex-col items-center">
+            <button 
+              onClick={() => {
+                if (!acceptedTerms) {
+                   alert("Por favor, leia e aceite os termos de responsabilidade antes de gravar.");
+                   return;
+                }
+                startRecording();
+              }} 
+              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-[1.5rem] sm:rounded-[2rem] flex items-center justify-center text-[#0A1931] mb-4 sm:mb-6 transition-all btn-press group bg-[#FFD700] shadow-[0_0_20px_rgba(255,215,0,0.4)] hover:bg-[#FFD700] hover:scale-105 active:scale-95`}
+              aria-label={t.caption}
+            >
+              <Mic size={32} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
             </button>
-            <p className="text-[10px] text-amber-700 font-black uppercase text-center tracking-[0.3em]">{t.caption}</p>
-          </>
-        )}
-        {isRecordingMode && (
-          <div className="w-full">
-            <div className="flex items-center justify-center gap-8 mb-10">
-              <button onClick={() => setStatus(VoiceState.IDLE)} className="flex flex-col items-center">
-                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-emerald-200 mb-3 border border-emerald-100 hover:text-emerald-900 transition-all btn-press">
-                  <RefreshCcw size={22} />
-                </div>
-                <p className="text-[9px] text-emerald-300 font-black uppercase tracking-widest">{t.regravar}</p>
-              </button>
-              <button onClick={stopRecordingAndProcess} className="flex flex-col items-center">
-                <div className="w-20 h-20 bg-red-600 rounded-3xl flex items-center justify-center text-white mb-3 shadow-2xl hover:bg-red-500 transition-all btn-press">
-                  <Square size={28} fill="currentColor" />
-                </div>
-                <p className="text-[10px] text-red-600 font-black uppercase tracking-widest">{t.finalizar}</p>
-              </button>
-            </div>
-            <div className="w-full bg-white p-6 rounded-2xl border border-emerald-100 max-h-40 overflow-y-auto custom-scrollbar shadow-sm">
-               <div className="flex items-center gap-2 mb-3">
-                 <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
-                 <span className="text-[9px] font-black uppercase text-amber-700 tracking-widest">{t.silenciando}</span>
-               </div>
-               <p className="text-[13px] text-emerald-950 font-bold italic leading-relaxed">{transcriptBuffer || "Ouvindo..."}</p>
+            <p className={`text-[12px] sm:text-[14px] font-black uppercase text-center tracking-[0.3em] sm:tracking-[0.4em] mb-6 text-[#B8860B]`}>{t.caption}</p>
+            
+            <div className="bg-black/5 p-4 rounded-xl border border-black/10 max-w-md w-full">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-1 w-5 h-5 rounded border-gray-300 text-[#B8860B] focus:ring-[#B8860B]"
+                />
+                <span className="text-xs text-[#0A1931]/80 leading-relaxed">
+                  <strong>Declaração de Responsabilidade:</strong> Confirmo que possuo autorização expressa de todos os participantes para gravar e processar este áudio, assumindo total responsabilidade civil e criminal pelo uso do conteúdo.
+                </span>
+              </label>
             </div>
           </div>
         )}
+        
+        {isRecordingMode && (
+          <div className="w-full animate-in fade-in zoom-in-95 duration-300">
+            <div className="flex flex-col items-center mb-8 sm:mb-14">
+              <div className="relative">
+                <div className="absolute inset-0 bg-red-500/10 blur-3xl rounded-full scale-150"></div>
+                <div className="text-7xl sm:text-9xl font-black font-mono text-red-600 tracking-tighter mb-2 sm:mb-4 drop-shadow-[0_0_12px_rgba(220,38,38,0.8)] relative">
+                  {formatTime(timer)}
+                </div>
+              </div>
+              <div className={`flex items-center gap-2 sm:gap-3 px-6 py-2 rounded-full text-white uppercase tracking-[0.3em] text-[12px] sm:text-[14px] font-black shadow-lg transition-all ${isPaused ? 'bg-orange-500 shadow-orange-500/20' : 'bg-red-600 shadow-red-600/20 active:scale-95'}`}>
+                <div className={`w-2.5 h-2.5 sm:w-3 sm:h-3 bg-white rounded-full ${isPaused ? '' : 'animate-pulse'} shadow-[0_0_8px_rgba(255,255,255,0.8)]`}></div>
+                {isPaused ? 'Pausado' : 'Gravando Reunião'}
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-center gap-6 sm:gap-10 mb-10 sm:mb-16">
+              <button 
+                onClick={() => {
+                  if (confirm("Deseja realmente descartar esta gravação e reiniciar o cronômetro?")) {
+                    setStatus(VoiceState.IDLE);
+                    if (onRecordingStateChange) onRecordingStateChange(false);
+                    if (recognitionRef.current) recognitionRef.current.stop();
+                    if (intervalRef.current) clearInterval(intervalRef.current);
+                  }
+                }} 
+                className="flex flex-col items-center group"
+              >
+                <div className="w-14 h-14 sm:w-18 sm:h-18 bg-black/5 rounded-2xl sm:rounded-3xl flex items-center justify-center text-[#0A1931]/40 mb-2 sm:mb-3 border-2 border-black/5 group-hover:text-[#0A1931] group-hover:border-black/20 group-hover:bg-black/10 transition-all btn-press">
+                  <RefreshCcw size={22} className="sm:w-7 sm:h-7" />
+                </div>
+                <p className="text-[10px] sm:text-[12px] text-[#0A1931]/40 font-black uppercase tracking-widest">{t.regravar}</p>
+              </button>
+
+              <button onClick={togglePause} className="flex flex-col items-center group relative">
+                <div className={`w-20 h-20 sm:w-24 sm:h-24 ${isPaused ? 'bg-orange-500 hover:bg-orange-600' : 'bg-black/10 hover:bg-black/20'} rounded-[2rem] sm:rounded-[2.5rem] flex items-center justify-center ${isPaused ? 'text-white' : 'text-[#0A1931]'} mb-3 sm:mb-4 transition-all btn-press shadow-md`}>
+                  {isPaused ? <Play size={32} fill="currentColor" className="sm:w-10 sm:h-10 ml-1" /> : <Pause size={32} fill="currentColor" className="sm:w-10 sm:h-10" />}
+                </div>
+                <p className={`text-[12px] sm:text-[14px] ${isPaused ? 'text-orange-500' : 'text-[#0A1931]/60'} font-black uppercase tracking-[0.2em] relative`}>{isPaused ? 'Continuar' : 'Pausar'}</p>
+              </button>
+
+              <button onClick={stopRecordingAndProcess} className="flex flex-col items-center group relative">
+                <div className="absolute -inset-4 bg-red-600/20 blur-xl rounded-full animate-pulse"></div>
+                <div className="w-24 h-24 sm:w-32 sm:h-32 bg-red-600 rounded-[2.5rem] sm:rounded-[3.5rem] flex items-center justify-center text-white mb-4 sm:mb-5 shadow-[0_15px_35px_rgba(220,38,38,0.4)] group-hover:bg-red-700 group-hover:scale-105 active:scale-90 transition-all btn-press relative">
+                  <Square size={36} fill="currentColor" className="sm:w-12 sm:h-12" />
+                </div>
+                <p className="text-[16px] sm:text-[18px] text-red-600 font-black uppercase tracking-[0.2em] relative">{t.finalizar}</p>
+              </button>
+            </div>
+
+            <div className="w-full bg-[#0A1931] p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border-4 border-[#FFD700]/10 shadow-2xl">
+               <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6 border-b border-white/5 pb-4">
+                 <div className="flex items-center gap-3">
+                   <div className={`w-3 h-3 sm:w-4 sm:h-4 ${micError ? 'bg-orange-500 shadow-[0_0_10px_#f97316]' : 'bg-[#FFD700] shadow-[0_0_10px_#FFD700]'} rounded-full animate-pulse`}></div>
+                   <span className="text-[12px] sm:text-[14px] font-black uppercase text-white/40 tracking-[0.2em]">
+                     {micError ? "MICROFONE OFFLINE" : t.silenciando}
+                   </span>
+                 </div>
+               </div>
+               
+               {micError && (
+                 <div className="mb-4 p-3.5 bg-orange-500/10 border border-orange-500/20 text-orange-400 rounded-xl text-xs font-semibold leading-relaxed text-center">
+                   ⚠️ {micError}
+                 </div>
+               )}
+
+               <div className="w-full">
+                 <textarea
+                   value={transcriptBuffer}
+                   onChange={(e) => {
+                     setTranscriptBuffer(e.target.value);
+                     transcriptRef.current = e.target.value;
+                   }}
+                   placeholder={micError ? "Digite, cole ou edite as notas da reunião aqui diretamente..." : "Escutando conversa... (Você também pode digitar, colar ou editar os pontos capturados aqui diretamente)"}
+                   className="w-full h-32 sm:h-40 bg-transparent text-white font-bold italic leading-relaxed text-center opacity-90 tracking-tight resize-none border-none focus:ring-0 focus:outline-none text-[16px] sm:text-[18px] custom-scrollbar focus:placeholder-white/30"
+                 />
+               </div>
+            </div>
+          </div>
+        )}
+
         {status === VoiceState.PROCESSING && (
           <div className="flex flex-col items-center py-10">
-            <Loader2 size={40} className="text-amber-600 animate-spin mb-6" />
-            <p className="text-[11px] font-black uppercase text-amber-700 tracking-[0.4em]">{t.redigindo}</p>
+            <div className="relative mb-8">
+               <Loader2 size={56} className="text-[#B8860B] animate-spin" />
+               <Sparkles size={20} className="text-[#B8860B] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+            </div>
+            <p className="text-[15px] font-black uppercase text-[#0A1931] tracking-[0.5em] animate-pulse">{t.redigindo}</p>
+          </div>
+        )}
+
+        {status === VoiceState.ERROR && (
+          <div className="flex flex-col items-center py-6">
+            <XCircle size={48} className="text-red-500 mb-4" />
+            <p className="text-[11px] font-black uppercase text-red-600 tracking-widest mb-6">{t.erro}</p>
+            <button onClick={startRecording} className="px-8 py-3 bg-[#FFD700] text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#FFD700] transition-all">
+              {t.tentar}
+            </button>
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl flex items-center gap-3">
-          <Sparkles size={18} className="text-amber-600" />
-          <h4 className="text-[9px] font-black uppercase text-emerald-900/40 tracking-widest leading-none">{t.sintese}</h4>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 px-2 sm:px-4 pb-4">
+        <div className="p-4 sm:p-5 bg-black/5 border-2 border-black/10 rounded-xl sm:rounded-2xl flex items-center gap-3 sm:gap-4">
+          <Sparkles size={18} className="text-[#B8860B] sm:w-5 sm:h-5" />
+          <div>
+            <h4 className="text-[12px] sm:text-[14px] font-black uppercase text-[#0A1931] tracking-widest mb-0.5">{t.sintese}</h4>
+          </div>
         </div>
-        <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl flex items-center gap-3">
-          <CheckCircle size={18} className="text-emerald-600" />
-          <h4 className="text-[9px] font-black uppercase text-emerald-900/40 tracking-widest leading-none">{t.fidelidade}</h4>
+        <div className="p-4 sm:p-5 bg-[#B8860B]/10 border-2 border-[#B8860B]/20 rounded-xl sm:rounded-2xl flex items-center gap-3 sm:gap-4">
+          <CheckCircle size={18} className="text-[#B8860B] sm:w-5 sm:h-5" />
+          <div>
+            <h4 className="text-[12px] sm:text-[14px] font-black uppercase text-[#0A1931] tracking-widest mb-0.5">{t.fidelidade}</h4>
+            <p className="text-[10px] sm:text-[11px] font-bold text-[#0A1931]/40 uppercase">High-Res</p>
+          </div>
         </div>
       </div>
     </div>

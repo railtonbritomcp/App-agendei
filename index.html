@@ -2,37 +2,41 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+  <style>body { }</style>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#022c22">
-    <meta name="description" content="Agendei - Plataforma de Testes Executivos">
+    <meta name="theme-color" content="#0A1931">
+    <meta name="description" content="Agendei - Assistente de Voz Inteligente">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="./manifest.json">
-    <title>AGENDEI | Executive Suite</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="apple-mobile-web-app-title" content="Agendei">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="/logo.svg">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png?v=2">
+    <link rel="manifest" href="/manifest.json?v=2">
+    <title>Agendei | Executive</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --amazon-green: #064e3b;
-            --amazon-gold: #d97706;
-            --deep-river: #021526;
+            --exec-navy: #0A1931;
+            --exec-sapphire: #0F52BA;
+            --exec-gold: #FFD700;
+            --bg-light: #0A1931;
+            --glass-bg: rgba(17, 34, 64, 0.75);
+            --glass-border: rgba(255, 215, 0, 0.2);
         }
 
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
-            background: var(--deep-river);
-            overflow-x: hidden; 
-            color: #ecfdf5;
+            background: var(--bg-light);
+            color: #FFFFFF;
             min-height: 100vh;
-            position: fixed;
-            width: 100%;
-            height: 100%;
+            overflow-x: hidden;
         }
 
         #root {
             height: 100%;
-            overflow-y: auto;
             -webkit-overflow-scrolling: touch;
         }
 
@@ -43,46 +47,63 @@
             width: 100%;
             height: 100%;
             z-index: -1;
-            background: radial-gradient(circle at 50% 50%, #032030 0%, #021526 100%);
+            background: 
+                radial-gradient(circle at 0% 0%, rgba(255, 215, 0, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 100% 100%, rgba(15, 82, 186, 0.2) 0%, transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(17, 34, 64, 0.8) 0%, transparent 60%),
+                var(--bg-light);
         }
 
-        .logo-amazon {
-            background: linear-gradient(180deg, #fef3c7 0%, #d97706 100%);
+        /* Abstract Background Overlay */
+        .brazil-map-overlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 80%;
+            z-index: -1;
+            opacity: 0.05;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500"><path fill="%23FFD700" d="M120,80 C150,50 250,40 350,70 C400,90 450,150 430,220 C410,290 440,350 400,420 C360,490 280,480 200,450 C120,420 80,380 50,320 C20,260 50,180 120,80 Z" /></svg>');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            filter: blur(20px);
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .logo-executive {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             font-weight: 900;
         }
 
-        .bg-amazon-premium {
-            background: linear-gradient(135deg, #064e3b 0%, #022c22 100%);
-        }
-
-        .btn-press:active { transform: scale(0.96); transition: transform 0.1s; }
-
+        .btn-press:active { transform: scale(0.95); }
+        
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 215, 0, 0.3); border-radius: 10px; }
 
-        .staging-grid {
-            background-image: radial-gradient(rgba(217, 119, 6, 0.05) 1px, transparent 0);
-            background-size: 30px 30px;
+        @keyframes pulse-gold {
+            0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(255, 215, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
         }
+
+        .voice-pulse { animation: pulse-gold 2s infinite; }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "date-fns/": "https://esm.sh/date-fns@^4.1.0/",
-    "date-fns": "https://esm.sh/date-fns@^4.1.0"
-  }
-}
-</script>
 </head>
-<body class="staging-grid">
+<body>
     <div class="mesh-bg"></div>
+    <div class="brazil-map-overlay"></div>
     <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
 </body>
 </html>

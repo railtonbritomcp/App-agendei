@@ -1,0 +1,25 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer Dark Blue Background Circle -->
+  <circle cx="256" cy="256" r="240" fill="#0D1E36" stroke="#FDD835" stroke-width="16"/>
+  
+  <!-- Notebook and Pen Icon (White) -->
+  <g transform="translate(106, 112) scale(12)" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Notebook body -->
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9" />
+    <!-- Notebook spiral rings on the left -->
+    <path d="M2 5h4" />
+    <path d="M2 9h4" />
+    <path d="M2 13h4" />
+    <path d="M2 17h4" />
+    <!-- Pen drawing -->
+    <path d="M18.4 2.6a1.5 1.5 0 0 1 2.1 2.1L15 10l-3 1 1-3Z" />
+  </g>
+
+  <!-- Sparkles Badge in the Bottom-Right Corner -->
+  <circle cx="410" cy="410" r="75" fill="#FDD835" stroke="#0D1E36" stroke-width="12" />
+  <!-- Sparkle/Stars inside the badge -->
+  <g transform="translate(372, 372) scale(3.2)" fill="#0D1E36">
+    <path d="M12 2L14.4 7.6L20 10L14.4 12.4L12 18L9.6 12.4L4 10L9.6 7.6Z" />
+    <circle cx="6" cy="15" r="2" />
+  </g>
+</svg>
