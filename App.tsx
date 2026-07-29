@@ -30,7 +30,7 @@ const RarbCodingLogo = () => (
         <polygon points="108,24 94,40 116,44" fill="#FFFFFF" />
       </svg>
       <div className="flex flex-col text-left">
-        <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-[0.3em] mb-0.5">Desenvolvido por</span>
+        <span className="text-[12px] text-[var(--text-muted)] uppercase tracking-[0.3em] mb-0.5">Desenvolvido por</span>
         <span className="text-xl font-extrabold tracking-wider font-mono text-[var(--text-main)] leading-none">
           Rar<span className="text-[#00F2FE]">b</span><span className="relative inline-block border-b-2 border-[#00F2FE] pb-0.5">_CODING</span>
         </span>
@@ -179,8 +179,7 @@ const App: React.FC = () => {
         try {
           const start = new Date(`${app.date}T${app.time}`);
           const report = reports.find(r => r.appointmentId === app.id);
-          const docId = `${mirrorId}_${app.id}`; // Identificador único por espelhamento
-          await setDoc(doc(db, 'appointments', docId), {
+          await setDoc(doc(db, 'appointments', app.id), {
             titulo: app.title.toUpperCase(),
             data_inicio: start,
             data_fim: new Date(start.getTime() + app.duration * 60000),
@@ -229,8 +228,7 @@ const App: React.FC = () => {
       try {
         const start = new Date(`${app.date}T${app.time}`);
         const report = reports.find(r => r.appointmentId === app.id);
-        const docId = `${newId}_${app.id}`;
-        await setDoc(doc(db, 'appointments', docId), {
+        await setDoc(doc(db, 'appointments', app.id), {
           titulo: app.title.toUpperCase(),
           data_inicio: start,
           data_fim: new Date(start.getTime() + app.duration * 60000),
@@ -739,7 +737,7 @@ const App: React.FC = () => {
   const handleShareReport = async (report: MeetingReport) => {
     const appTitle = appointments.find(a => a.id === report.appointmentId)?.title || 'REUNIÃO';
     const text = `
-📌 *ATA DE REUNIÃO: ${appTitle}*
+📌 *MEMÓRIA DO REGISTRO EXECUTIVO DA REUNIÃO: ${appTitle}*
 📅 Data: ${format(new Date(report.timestamp), "dd/MM/yyyy 'às' HH:mm")}
 
 ${report.markdownReport}
@@ -750,7 +748,7 @@ _Enviado via AGENDEI IA_
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Ata: ${appTitle}`,
+          title: `Memória: ${appTitle}`,
           text: text
         });
       } catch (err) {
@@ -760,7 +758,7 @@ _Enviado via AGENDEI IA_
       }
     } else {
       navigator.clipboard.writeText(text).catch(e => console.error("Clipboard error:", e));
-      alert('Ata completa copiada para a área de transferência!');
+      alert('Memória completa copiada para a área de transferência!');
     }
   };
 
@@ -886,7 +884,13 @@ _Enviado via AGENDEI IA_
   };
 
   const handleDownloadPDF = (report: MeetingReport) => {
-    const appTitle = appointments.find(a => a.id === report.appointmentId)?.title || 'REUNIÃO';
+    const appointment = appointments.find(a => a.id === report.appointmentId);
+    const appTitle = appointment?.title || 'REUNIÃO';
+    const appLocation = appointment?.location || 'Não especificado';
+    const appDate = appointment 
+      ? `${format(new Date(appointment.date + 'T' + (appointment.time || '12:00')), "dd/MM/yyyy")} às ${appointment.time}`
+      : format(new Date(report.timestamp), "dd/MM/yyyy 'às' HH:mm");
+
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -908,42 +912,142 @@ _Enviado via AGENDEI IA_
       return false;
     };
 
-    // Header
+    // Header Title
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
+    doc.setFontSize(16);
     doc.setTextColor(10, 25, 49); // #0A1931
-    const titleLines = doc.splitTextToSize(`ATA DE REUNIÃO: ${appTitle}`, contentWidth);
+    const titleLines = doc.splitTextToSize(`MEMÓRIA DO REGISTRO EXECUTIVO DA REUNIÃO`, contentWidth);
     doc.text(titleLines, margin, yPos);
-    yPos += (titleLines.length * 8) + 2;
+    yPos += (titleLines.length * 7) + 2;
+
+    doc.setFontSize(13);
+    doc.setTextColor(184, 134, 11); // Gold accent
+    const subTitleLines = doc.splitTextToSize(appTitle.toUpperCase(), contentWidth);
+    doc.text(subTitleLines, margin, yPos);
+    yPos += (subTitleLines.length * 6) + 3;
     
-    doc.setFont('helvetica', 'normal');
+    // Metadata: Data e Local da Reunião
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Data: ${format(new Date(report.timestamp), "dd/MM/yyyy 'às' HH:mm")}`, margin, yPos);
-    yPos += 15;
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Data: ${appDate}   |   Local: ${appLocation}`, margin, yPos);
+    yPos += 8;
     
-    // Line separator
+    // Separator line
     doc.setDrawColor(200, 200, 200);
-    doc.line(margin, yPos - 5, pageWidth - margin, yPos - 5);
+    doc.line(margin, yPos, pageWidth - margin, yPos);
+    yPos += 10;
     
-    // Report Content
-    checkPageBreak(30);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-    doc.setTextColor(50, 50, 50);
-    
-    // Strip simple markdown like ** and # for PDF, or just print it as is
-    const cleanText = report.markdownReport.replace(/\*\*/g, '').replace(/## /g, '');
-    const splitLines = doc.splitTextToSize(cleanText, contentWidth);
-    
-    splitLines.forEach((line: string) => {
+    // Content Processing
+    const rawMarkdown = report.markdownReport || '';
+    const rawLines = rawMarkdown.split('\n');
+
+    rawLines.forEach((line) => {
+      let trimmed = line.trim();
+      if (!trimmed) {
+        yPos += 3;
+        return;
+      }
+
+      // Replace technical terms & sanitize
+      trimmed = trimmed
+        .replace(/#\s*ATA DE REUNIÃO/gi, 'MEMÓRIA DO REGISTRO EXECUTIVO DA REUNIÃO')
+        .replace(/ATA DE REUNIÃO/gi, 'MEMÓRIA DA REUNIÃO')
+        // Strip emojis to prevent broken characters in jsPDF
+        .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2B50}\u{200D}\u{FE0F}\u{1F900}-\u{1F9FF}\u{1F000}-\u{1F02F}]/gu, '')
+        // Sanitize non-latin1 characters
+        .replace(/[^\x00-\xFF\u00C0-\u00FF]/g, '')
+        .trim();
+
+      if (!trimmed) return;
+
+      // Filter out Legal Status and Gemini disclaimer notice per user request
+      if (
+        /STATUS JUR[ÍI]DICO/i.test(trimmed) ||
+        /Confirmado:\s*O usu[áa]rio/i.test(trimmed) ||
+        /Aviso:/i.test(trimmed) ||
+        /GEMINI_API_KEY/i.test(trimmed) ||
+        /Este relat[óo]rio foi estruturado/i.test(trimmed) ||
+        /motor local seguro/i.test(trimmed) ||
+        /^#\s*MEM[ÓO]RIA (DO REGISTRO EXECUTIVO DA REUNI[ÃA]O|DA REUNI[ÃA]O)/i.test(trimmed)
+      ) {
+        return;
+      }
+
+      // Horizontal divider
+      if (trimmed === '---') {
+        checkPageBreak(5);
+        doc.setDrawColor(220, 220, 220);
+        doc.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 5;
+        return;
+      }
+
+      // Headings (#, ##, ###)
+      if (trimmed.startsWith('#')) {
+        const headingText = trimmed.replace(/^#+\s*/, '').replace(/\*\*/g, '').trim();
+        if (!headingText) return;
+        checkPageBreak(12);
+        yPos += 3;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(10, 25, 49);
+        const splitHeading = doc.splitTextToSize(headingText.toUpperCase(), contentWidth);
+        doc.text(splitHeading, margin, yPos);
+        yPos += (splitHeading.length * 5) + 3;
+        return;
+      }
+
+      // Blockquotes (> )
+      if (trimmed.startsWith('>')) {
+        const quoteText = trimmed.replace(/^>\s*/, '').replace(/\*\*/g, '').trim();
+        if (!quoteText) return;
+        checkPageBreak(8);
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(9.5);
+        doc.setTextColor(70, 70, 70);
+        const splitQuote = doc.splitTextToSize(quoteText, contentWidth - 8);
+        splitQuote.forEach((qLine: string) => {
+          checkPageBreak(6);
+          doc.text(qLine, margin + 4, yPos);
+          yPos += 5;
+        });
+        yPos += 2;
+        return;
+      }
+
+      // Bullet points (* or -)
+      if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+        const bulletText = trimmed.replace(/^[*|-]\s*/, '').replace(/\*\*/g, '').trim();
+        if (!bulletText) return;
+        checkPageBreak(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(40, 40, 40);
+        const splitBullet = doc.splitTextToSize(`• ${bulletText}`, contentWidth - 4);
+        splitBullet.forEach((bLine: string, idx: number) => {
+          checkPageBreak(6);
+          doc.text(bLine, idx === 0 ? margin : margin + 4, yPos);
+          yPos += 5;
+        });
+        return;
+      }
+
+      // Paragraphs
+      const cleanPara = trimmed.replace(/\*\*/g, '');
       checkPageBreak(7);
-      doc.text(line, margin, yPos);
-      yPos += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(40, 40, 40);
+      const splitPara = doc.splitTextToSize(cleanPara, contentWidth);
+      splitPara.forEach((pLine: string) => {
+        checkPageBreak(6);
+        doc.text(pLine, margin, yPos);
+        yPos += 5;
+      });
+      yPos += 2;
     });
-    
-    yPos += 15;
-    
+
     // Footer on all pages
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
@@ -952,14 +1056,14 @@ _Enviado via AGENDEI IA_
       doc.setFontSize(8);
       doc.setTextColor(150, 150, 150);
       doc.text(
-        `Gerado por Agendei IA - Página ${i} de ${pageCount}`,
+        `Memória do Registro Executivo da Reunião - Página ${i} de ${pageCount}`,
         pageWidth / 2,
         pageHeight - 10,
         { align: 'center' }
       );
     }
     
-    doc.save(`Ata_${appTitle.replace(/\s+/g, '_')}.pdf`);
+    doc.save(`Memoria_Executiva_${appTitle.replace(/\s+/g, '_')}.pdf`);
   };
 
   const selectedDayAppointments = useMemo(() => {
@@ -982,7 +1086,7 @@ _Enviado via AGENDEI IA_
         
         <div className="flex flex-col gap-3">
           <div className="flex items-start justify-between">
-            <h4 className="text-[14px] sm:text-[15px] font-bold text-black uppercase tracking-tight group-hover:text-[#FDD835] transition-colors leading-tight">
+            <h4 className="text-[16px] sm:text-[17px] font-bold text-black uppercase tracking-tight group-hover:text-[#FDD835] transition-colors leading-tight">
               · {app.time} - {app.title} ({app.duration} min)
             </h4>
             {app.reminders && app.reminders.length > 0 && (
@@ -994,30 +1098,30 @@ _Enviado via AGENDEI IA_
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 px-2 py-1">
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-bold text-black/40 uppercase tracking-wider">Status:</span>
+              <span className="text-[11px] font-bold text-black/40 uppercase tracking-wider">Status:</span>
               {isReport ? (
-                <span className="text-[9px] font-bold text-green-700 uppercase bg-green-600/10 px-1.5 py-0.5 rounded">DOCUMENTADO</span>
+                <span className="text-[11px] font-bold text-green-700 uppercase bg-green-600/10 px-1.5 py-0.5 rounded">DOCUMENTADO</span>
               ) : recordingTimer?.id === app.id && recordingTimer.isRecording ? (
-                <span className="text-[9px] font-bold text-red-600 uppercase bg-red-600/10 px-1.5 py-0.5 rounded animate-pulse">GRAVANDO</span>
+                <span className="text-[11px] font-bold text-red-600 uppercase bg-red-600/10 px-1.5 py-0.5 rounded animate-pulse">GRAVANDO</span>
               ) : (
-                <span className="text-[9px] font-bold text-black/60 uppercase bg-black/5 px-1.5 py-0.5 rounded">AGENDADO</span>
+                <span className="text-[11px] font-bold text-black/60 uppercase bg-black/5 px-1.5 py-0.5 rounded">AGENDADO</span>
               )}
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-bold text-black/40 uppercase tracking-wider">Categoria:</span>
-              <span className="text-[9px] font-bold text-black/80 uppercase">{app.category || 'Geral'}</span>
+              <span className="text-[11px] font-bold text-black/40 uppercase tracking-wider">Categoria:</span>
+              <span className="text-[11px] font-bold text-black/80 uppercase">{app.category || 'Geral'}</span>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-bold text-black/40 uppercase tracking-wider">Local:</span>
-              <span className="text-[9px] font-bold text-black/80 uppercase">{app.location || 'Não Definido'}</span>
+              <span className="text-[11px] font-bold text-black/40 uppercase tracking-wider">Local:</span>
+              <span className="text-[11px] font-bold text-black/80 uppercase">{app.location || 'Não Definido'}</span>
             </div>
 
             {app.description && (
               <div className="flex items-start gap-2 sm:col-span-2">
-                <span className="text-[9px] font-semibold text-[var(--text-main)]/40 uppercase tracking-wider whitespace-nowrap">Assuntos:</span>
-                <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase line-clamp-1">{app.description}</span>
+                <span className="text-[11px] font-semibold text-[var(--text-main)]/40 uppercase tracking-wider whitespace-nowrap">Assuntos:</span>
+                <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase line-clamp-1">{app.description}</span>
               </div>
             )}
           </div>
@@ -1090,7 +1194,7 @@ _Enviado via AGENDEI IA_
 
             {/* Texto de ação */}
             <div className="text-left flex flex-col justify-center leading-none">
-              <span className="text-[9px] font-black uppercase tracking-wider text-[var(--text-main)] mb-0.5">
+              <span className="text-[12px] font-black uppercase tracking-wider text-[var(--text-main)] mb-0.5">
                 Instalar
               </span>
               <span className="text-[7.5px] font-bold uppercase tracking-widest text-[var(--brand)]">
@@ -1132,7 +1236,7 @@ _Enviado via AGENDEI IA_
             </div>
 
             {installHelpTab === 'ios' ? (
-              <div className="space-y-4 text-xs font-semibold text-blue-100">
+              <div className="space-y-4 text-[13px] font-semibold text-blue-100">
                 <p className="flex items-start gap-3 bg-white/5 p-4 rounded-xl">
                   <span className="bg-[var(--bg-card)] text-[var(--brand)] w-6 h-6 rounded-full flex items-center justify-center font-bold flex-shrink-0 mt-0.5">1</span>
                   <span>Abra no navegador <strong className="text-white">Safari</strong> e toque no botão <strong className="text-white">Compartilhar</strong> <Share2 size={14} className="inline mx-1 align-text-bottom text-[var(--brand)]" /> (barra inferior).</span>
@@ -1147,7 +1251,7 @@ _Enviado via AGENDEI IA_
                 </p>
               </div>
             ) : (
-              <div className="space-y-4 text-xs font-semibold text-blue-100">
+              <div className="space-y-4 text-[13px] font-semibold text-blue-100">
                 <p className="flex items-start gap-3 bg-white/5 p-4 rounded-xl">
                   <span className="bg-[var(--bg-card)] text-[var(--brand)] w-6 h-6 rounded-full flex items-center justify-center font-bold flex-shrink-0 mt-0.5">1</span>
                   <span>Toque nos <strong className="text-white">Três Pontinhos</strong> <MoreVertical size={14} className="inline mx-1 align-text-bottom text-[var(--brand)]" /> no canto superior direito do seu navegador Chrome.</span>
@@ -1191,17 +1295,17 @@ _Enviado via AGENDEI IA_
         </div>
         
         <h1 className="text-[46px] sm:text-[58px] font-semibold logo-executive leading-none tracking-tighter text-center mt-2 text-[var(--brand)]">AGENDEI</h1>
-        <p className="text-[10.5px] sm:text-[11.5px] font-semibold text-[var(--text-main)] uppercase tracking-[0.3em] sm:tracking-[0.4em] mt-1.5 text-center">Agendamento Inteligente</p>
+        <p className="text-[13px] sm:text-[11.5px] font-semibold text-[var(--text-main)] uppercase tracking-[0.3em] sm:tracking-[0.4em] mt-1.5 text-center">Agendamento Inteligente</p>
         {!isPro && (
           <button 
             onClick={() => setIsSubscriptionModalOpen(true)}
-            className="absolute top-4 left-0 sm:left-2 flex items-center gap-1 sm:gap-1.5 px-3 py-2 bg-[var(--brand)] rounded-full text-[9px] font-semibold text-black uppercase tracking-wide hover:bg-white transition-all shadow-[0_0_15px_rgba(253,216,53,0.5)]"
+            className="absolute top-4 left-0 sm:left-2 flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2 bg-[var(--brand)] rounded-full text-[9px] sm:text-[11px] font-semibold text-black uppercase tracking-wide hover:bg-white transition-all shadow-[0_0_15px_rgba(253,216,53,0.5)]"
           >
-            <Sparkles size={14} /> Assinar Agora
+            <Sparkles size={12} className="sm:w-3.5 sm:h-3.5" /> Assinar
           </button>
         )}
 
-        <button className="absolute top-4 right-0 sm:right-2 flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 glass-panel rounded-full text-[9px] sm:text-[10px] font-semibold text-[var(--text-main)] uppercase tracking-wide hover:bg-[var(--brand)] transition-colors">
+        <button className="absolute top-4 right-0 sm:right-2 flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 glass-panel rounded-full text-[12px] sm:text-[10px] font-semibold text-[var(--text-main)] uppercase tracking-wide hover:bg-[var(--brand)] transition-colors">
           <Globe size={13} /> {selectedLang.label}
         </button>
       </header>
@@ -1320,7 +1424,7 @@ _Enviado via AGENDEI IA_
                <div className="max-h-[55vh] sm:max-h-[65vh] overflow-y-auto custom-scrollbar">
                              {selectedDayAppointments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 px-4">
-                                    <p className="text-black/40 text-xs font-bold uppercase text-center tracking-wider">Nenhum compromisso marcado para este dia.</p>
+                                    <p className="text-black/40 text-[13px] font-bold uppercase text-center tracking-wider">Nenhum compromisso marcado para este dia.</p>
                 </div>
               ) : (
                 <div className="flex flex-col">
@@ -1333,33 +1437,33 @@ _Enviado via AGENDEI IA_
                          
                          <div className="space-y-4">
                              <div className="flex items-start justify-between">
-                               <h4 className="text-[16px] sm:text-[18px] font-bold text-black uppercase tracking-tight leading-tight">
+                               <h4 className="text-[16px] sm:text-[17px] font-bold text-black uppercase tracking-tight leading-tight">
                                  · {app.time} - {app.title} ({app.duration} min)
                                </h4>
                              </div>
                              
                              <div className="grid grid-cols-1 gap-2.5">
                                <div className="flex items-center gap-3">
-                                 <span className="text-[10.5px] font-bold text-black/50 uppercase tracking-[0.1em] min-w-[70px]">Status:</span>
-                                 <span className={`text-[10.5px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${isReport ? 'bg-green-600/20 text-green-700' : 'bg-black/10 text-black/60'}`}>
+                                 <span className="text-[11px] font-bold text-black/50 uppercase tracking-[0.1em] min-w-[70px]">Status:</span>
+                                 <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${isReport ? 'bg-green-600/20 text-green-700' : 'bg-black/10 text-black/60'}`}>
                                    {isReport ? 'DOCUMENTADO' : 'AGENDADO'}
                                  </span>
                                </div>
                                
                                <div className="flex items-center gap-3">
-                                 <span className="text-[10.5px] font-bold text-black/50 uppercase tracking-[0.1em] min-w-[70px]">Categoria:</span>
-                                 <span className="text-[10.5px] font-bold text-black/80 uppercase tracking-wide">{app.category || 'Geral'}</span>
+                                 <span className="text-[11px] font-bold text-black/50 uppercase tracking-[0.1em] min-w-[70px]">Categoria:</span>
+                                 <span className="text-[11px] font-bold text-black/80 uppercase tracking-wide">{app.category || 'Geral'}</span>
                                </div>
                                
                                <div className="flex items-center gap-3">
-                                 <span className="text-[10.5px] font-bold text-black/50 uppercase tracking-[0.1em] min-w-[70px]">Local:</span>
-                                 <span className="text-[10.5px] font-bold text-black/80 uppercase tracking-wide">{app.location || 'Não Definido'}</span>
+                                 <span className="text-[11px] font-bold text-black/50 uppercase tracking-[0.1em] min-w-[70px]">Local:</span>
+                                 <span className="text-[11px] font-bold text-black/80 uppercase tracking-wide">{app.location || 'Não Definido'}</span>
                                </div>
 
                                {app.description && (
                                  <div className="flex items-start gap-3 mt-1">
-                                   <span className="text-[10.5px] font-bold text-black/50 uppercase tracking-[0.1em] min-w-[70px] mt-0.5">Assuntos:</span>
-                                   <p className="text-[10.5px] text-black/80 font-bold uppercase leading-relaxed">
+                                   <span className="text-[11px] font-bold text-black/50 uppercase tracking-[0.1em] min-w-[70px] mt-0.5">Assuntos:</span>
+                                   <p className="text-[11px] text-black/80 font-bold uppercase leading-relaxed">
                                      {app.description}
                                    </p>
                                  </div>
@@ -1379,12 +1483,12 @@ _Enviado via AGENDEI IA_
         <main className="flex-1 flex flex-col pt-8 pb-20 px-2 animate-in fade-in duration-500">
            <div className="flex items-center gap-3 mb-6">
               <Clock size={24} className="text-[var(--brand)]" />
-              <h2 className="text-xl font-semibold text-[var(--text-main)] uppercase tracking-wide">Histórico de Atas</h2>
+              <h2 className="text-xl font-semibold text-[var(--text-main)] uppercase tracking-wide">Histórico de Memórias</h2>
            </div>
            <div className="space-y-4">
               {appointments.filter(a => a.hasReport).sort((a,b) => new Date(`${b.date}T${b.time}`).getTime() - new Date(`${a.date}T${a.time}`).getTime()).map(renderAppCard)}
               {appointments.filter(a => a.hasReport).length === 0 && (
-                <p className="text-[var(--text-main)]/50 text-xs font-semibold uppercase text-center py-10">Nenhuma ata gerada ainda.</p>
+                <p className="text-[var(--text-main)]/50 text-[13px] font-semibold uppercase text-center py-10">Nenhuma memória executiva gerada ainda.</p>
               )}
            </div>
         </main>
@@ -1396,7 +1500,7 @@ _Enviado via AGENDEI IA_
            </div>
            <div className="space-y-4">
               {appointments.filter(a => a.potentialConflict || a.callAlert).length === 0 ? (
-                 <p className="text-[var(--text-main)]/50 text-xs font-semibold uppercase text-center py-10">Nenhum aviso pendente</p>
+                 <p className="text-[var(--text-main)]/50 text-[13px] font-semibold uppercase text-center py-10">Nenhum aviso pendente</p>
               ) : (
                 appointments.filter(a => a.potentialConflict || a.callAlert).map(app => (
                    <div key={app.id} className="bg-[var(--bg-card-alt)] border-l-4 border-l-[#EF5350] p-4 rounded-xl flex items-start gap-4">
@@ -1445,7 +1549,7 @@ _Enviado via AGENDEI IA_
                   <select 
                     value={selectedLang.id} 
                     onChange={e => setSelectedLang(LANGUAGES.find(l => l.id === e.target.value) || LANGUAGES[0])}
-                    className="bg-[var(--bg-panel-alt)] text-[var(--text-main)] text-xs p-2 uppercase font-semibold tracking-wide rounded border border-[var(--border-color)]"
+                    className="bg-[var(--bg-panel-alt)] text-[var(--text-main)] text-[13px] p-2 uppercase font-semibold tracking-wide rounded border border-[var(--border-color)]"
                   >
                     {LANGUAGES.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
@@ -1510,7 +1614,7 @@ _Enviado via AGENDEI IA_
 
              <div className="glass-panel p-5 rounded-2xl border-2 border-red-500/20">
                 <h3 className="text-[11px] font-semibold text-red-500 uppercase mb-4 tracking-wide">Zona de Perigo</h3>
-                <button onClick={() => setDeleteConfirmation({ type: 'all_data', id: 'global' })} className="w-full py-4 bg-red-500/10 text-red-500 border border-red-500/30 rounded-xl text-xs font-semibold uppercase tracking-wide hover:bg-red-500 hover:text-[var(--text-main)] transition-all">Apagar Todos os Dados</button>
+                <button onClick={() => setDeleteConfirmation({ type: 'all_data', id: 'global' })} className="w-full py-4 bg-red-500/10 text-red-500 border border-red-500/30 rounded-xl text-[13px] font-semibold uppercase tracking-wide hover:bg-red-500 hover:text-[var(--text-main)] transition-all">Apagar Todos os Dados</button>
              </div>
            </div>
         </main>
@@ -1607,7 +1711,7 @@ _Enviado via AGENDEI IA_
             {!editingAppointment && (
               <div className="mb-8 p-4 bg-[var(--brand)]/5 rounded-2xl border border-[var(--brand)]/20">
                 <p className="text-[10px] font-semibold text-[var(--brand)] uppercase tracking-wide text-center mb-2">Ou agende por voz:</p>
-                <p className="text-[9px] text-[var(--text-muted)] text-center mb-4 italic">Dica: Diga o horário e o compromisso (ex: "Reunião às 14h")</p>
+                <p className="text-[12px] text-[var(--text-muted)] text-center mb-4 italic">Dica: Diga o horário e o compromisso (ex: "Reunião às 14h")</p>
                 <VoiceAssistant 
                   onAddAppointment={(app) => {
                     handleAddAppointment(app);
@@ -1637,12 +1741,12 @@ _Enviado via AGENDEI IA_
 
             <form onSubmit={handleManualSave} className="space-y-6">
               <div className="space-y-2">
-                <label className="text-[9px] font-semibold text-blue-200 uppercase tracking-wide ml-1">O que será feito?</label>
+                <label className="text-[12px] font-semibold text-blue-200 uppercase tracking-wide ml-1">O que será feito?</label>
                 <input 
                   autoFocus 
                   type="text" 
                   placeholder="EX: REUNIÃO DE VENDAS" 
-                  className="w-full bg-[var(--bg-card)] border-2 border-[var(--border-color)] rounded-2xl px-6 py-4 text-xs font-semibold text-[var(--text-main)] focus:border-[var(--brand)] outline-none transition-all" 
+                  className="w-full bg-[var(--bg-card)] border-2 border-[var(--border-color)] rounded-2xl px-6 py-4 text-[13px] font-semibold text-[var(--text-main)] focus:border-[var(--brand)] outline-none transition-all" 
                   value={manualForm.title} 
                   onChange={e => setManualForm({...manualForm, title: e.target.value.toUpperCase()})} 
                   required 
@@ -1650,23 +1754,23 @@ _Enviado via AGENDEI IA_
               </div>
               <div className="grid grid-cols-2 gap-5">
                 <div className="space-y-2">
-                   <label className="text-[9px] font-semibold text-blue-200 uppercase tracking-wide ml-1">Data</label>
-                   <input type="date" className="w-full bg-[var(--bg-card)] border-2 border-[var(--border-color)] rounded-2xl px-6 py-4 text-xs font-semibold text-[var(--text-main)] uppercase" value={manualForm.date} onChange={e => setManualForm({...manualForm, date: e.target.value})} required />
+                   <label className="text-[12px] font-semibold text-blue-200 uppercase tracking-wide ml-1">Data</label>
+                   <input type="date" className="w-full bg-[var(--bg-card)] border-2 border-[var(--border-color)] rounded-2xl px-6 py-4 text-[13px] font-semibold text-[var(--text-main)] uppercase" value={manualForm.date} onChange={e => setManualForm({...manualForm, date: e.target.value})} required />
                 </div>
                 <div className="space-y-2">
-                   <label className="text-[9px] font-semibold text-blue-200 uppercase tracking-wide ml-1">Hora</label>
-                   <input type="time" className="w-full bg-[var(--bg-card)] border-2 border-[var(--border-color)] rounded-2xl px-6 py-4 text-xs font-semibold text-[var(--text-main)]" value={manualForm.time} onChange={e => setManualForm({...manualForm, time: e.target.value})} required />
+                   <label className="text-[12px] font-semibold text-blue-200 uppercase tracking-wide ml-1">Hora</label>
+                   <input type="time" className="w-full bg-[var(--bg-card)] border-2 border-[var(--border-color)] rounded-2xl px-6 py-4 text-[13px] font-semibold text-[var(--text-main)]" value={manualForm.time} onChange={e => setManualForm({...manualForm, time: e.target.value})} required />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-5">
                 <div className="space-y-2">
-                   <label className="text-[9px] font-semibold text-blue-200 uppercase tracking-wide ml-1">Duração</label>
-                   <input type="number" placeholder="MIN" className="w-full bg-[var(--bg-card)] border-2 border-[var(--border-color)] rounded-2xl px-6 py-4 text-xs font-semibold text-[var(--text-main)]" value={manualForm.duration} onChange={e => setManualForm({...manualForm, duration: parseInt(e.target.value) || 0})} />
+                   <label className="text-[12px] font-semibold text-blue-200 uppercase tracking-wide ml-1">Duração</label>
+                   <input type="number" placeholder="MIN" className="w-full bg-[var(--bg-card)] border-2 border-[var(--border-color)] rounded-2xl px-6 py-4 text-[13px] font-semibold text-[var(--text-main)]" value={manualForm.duration} onChange={e => setManualForm({...manualForm, duration: parseInt(e.target.value) || 0})} />
                 </div>
                 <div className="space-y-2">
-                   <label className="text-[9px] font-semibold text-blue-200 uppercase tracking-wide ml-1">Categoria</label>
-                   <select className="w-full bg-[var(--bg-card)] border-2 border-[var(--border-color)] rounded-2xl px-6 py-4 text-xs font-semibold text-[var(--text-main)] appearance-none" value={manualForm.category} onChange={e => setManualForm({...manualForm, category: e.target.value})}>
+                   <label className="text-[12px] font-semibold text-blue-200 uppercase tracking-wide ml-1">Categoria</label>
+                   <select className="w-full bg-[var(--bg-card)] border-2 border-[var(--border-color)] rounded-2xl px-6 py-4 text-[13px] font-semibold text-[var(--text-main)] appearance-none" value={manualForm.category} onChange={e => setManualForm({...manualForm, category: e.target.value})}>
                      <option value="Geral">GERAL</option>
                      <option value="Saúde">SAÚDE</option>
                      <option value="Trabalho">TRABALHO</option>
@@ -1677,21 +1781,21 @@ _Enviado via AGENDEI IA_
               </div>
 
               <div className="space-y-2">
-                 <label className="text-[9px] font-semibold text-blue-200 uppercase tracking-wide ml-1">Local</label>
-                 <input type="text" placeholder="EX: QG, GOOGLE MEET" className="w-full bg-[var(--bg-card)] border-2 border-[var(--border-color)] rounded-2xl px-6 py-4 text-xs font-semibold text-[var(--text-main)] uppercase" value={manualForm.location} onChange={e => setManualForm({...manualForm, location: e.target.value})} />
+                 <label className="text-[12px] font-semibold text-blue-200 uppercase tracking-wide ml-1">Local</label>
+                 <input type="text" placeholder="EX: QG, GOOGLE MEET" className="w-full bg-[var(--bg-card)] border-2 border-[var(--border-color)] rounded-2xl px-6 py-4 text-[13px] font-semibold text-[var(--text-main)] uppercase" value={manualForm.location} onChange={e => setManualForm({...manualForm, location: e.target.value})} />
               </div>
               <div className="space-y-2">
-                <label className="text-[9px] font-semibold text-blue-200 uppercase tracking-wide ml-1">Pautas da Reunião (Opcional)</label>
+                <label className="text-[12px] font-semibold text-blue-200 uppercase tracking-wide ml-1">Pautas da Reunião (Opcional)</label>
                 <textarea 
                   placeholder="EX: DISCUTIR METAS, APROVAR ORÇAMENTO..." 
-                  className="w-full bg-[var(--bg-card)] border-2 border-[var(--border-color)] rounded-2xl px-6 py-4 text-xs font-semibold text-[var(--text-main)] focus:border-[var(--brand)] outline-none transition-all resize-none h-24" 
+                  className="w-full bg-[var(--bg-card)] border-2 border-[var(--border-color)] rounded-2xl px-6 py-4 text-[13px] font-semibold text-[var(--text-main)] focus:border-[var(--brand)] outline-none transition-all resize-none h-24" 
                   value={manualForm.description} 
                   onChange={e => setManualForm({...manualForm, description: e.target.value.toUpperCase()})} 
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-[9px] font-semibold text-blue-200 uppercase tracking-wide ml-1 flex items-center gap-1">
+                <label className="text-[12px] font-semibold text-blue-200 uppercase tracking-wide ml-1 flex items-center gap-1">
                   <Bell size={10} /> Lembretes
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -1716,7 +1820,7 @@ _Enviado via AGENDEI IA_
                             };
                           });
                         }}
-                        className={`px-3 py-1.5 rounded-lg text-[9px] font-semibold uppercase transition-all ${
+                        className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold uppercase transition-all ${
                           isActive 
                             ? 'bg-[var(--brand)] text-black shadow-md' 
                             : 'bg-[var(--bg-card)] text-slate-400 border border-[var(--border-color)] hover:border-[var(--brand)]/50'
@@ -1730,7 +1834,7 @@ _Enviado via AGENDEI IA_
               </div>
               
               <div className="space-y-2">
-                <label className="text-[9px] font-semibold text-blue-200 uppercase tracking-wide ml-1 flex items-center gap-1">
+                <label className="text-[12px] font-semibold text-blue-200 uppercase tracking-wide ml-1 flex items-center gap-1">
                   <PhoneCall size={10} /> Alerta de Ligação
                 </label>
                 <button
@@ -1750,7 +1854,7 @@ _Enviado via AGENDEI IA_
               <div className="flex flex-col gap-3 pt-4">
                 <button type="submit" className="w-full bg-[var(--brand)] py-5 rounded-2xl text-[11px] font-semibold uppercase tracking-wide text-black shadow-lg hover:bg-[var(--bg-hover)] hover:text-[var(--text-main)] transition-all">Salvar Alterações</button>
                 {editingAppointment && (
-                  <button type="button" onClick={() => handleDeleteAppointment(null, editingAppointment.id)} className="w-full bg-[var(--bg-card)] border-2 border-red-50 py-4 rounded-2xl text-[9px] font-semibold uppercase tracking-wide text-red-500 hover:bg-red-50 transition-all flex items-center justify-center gap-2">
+                  <button type="button" onClick={() => handleDeleteAppointment(null, editingAppointment.id)} className="w-full bg-[var(--bg-card)] border-2 border-red-50 py-4 rounded-2xl text-[12px] font-semibold uppercase tracking-wide text-red-500 hover:bg-red-50 transition-all flex items-center justify-center gap-2">
                     <Trash2 size={14} /> Excluir ou Cancelar
                   </button>
                 )}
@@ -1803,7 +1907,7 @@ _Enviado via AGENDEI IA_
               </button>
               <button 
                 onClick={() => setIsSubscriptionModalOpen(false)}
-                className="w-full py-2 text-[9px] font-semibold uppercase tracking-wide text-[var(--text-main)]/40 hover:text-[var(--text-main)] transition-all"
+                className="w-full py-2 text-[12px] font-semibold uppercase tracking-wide text-[var(--text-main)]/40 hover:text-[var(--text-main)] transition-all"
               >
                 Talvez mais tarde
               </button>
@@ -1840,8 +1944,8 @@ _Enviado via AGENDEI IA_
                     <span className="text-[10px] font-semibold text-[var(--brand)] tracking-[0.4em] uppercase bg-[var(--brand)]/5 px-4 py-2 rounded-full inline-block">Resumo da Reunião</span>
                     <div className="flex items-center gap-2">
                       <button onClick={() => handleShareReport(selectedReport)} className="p-3 bg-[var(--bg-card)] rounded-xl text-[var(--text-main)] hover:bg-[var(--brand)] transition-all" title="Compartilhar"><Share2 size={18}/></button>
-                      <button onClick={(e) => handleDeleteReport(e, selectedReport.appointmentId)} className="p-3 bg-[var(--bg-card)] rounded-xl text-orange-400 hover:text-orange-600 hover:bg-orange-50 transition-all" title="Excluir apenas a Ata"><Trash2 size={18}/></button>
-                      <button onClick={(e) => handleDeleteAppointment(e, selectedReport.appointmentId)} className="p-3 bg-red-50 rounded-xl text-red-500 hover:text-red-700 hover:bg-red-100 transition-all" title="Excluir Compromisso e Ata"><X size={18}/></button>
+                      <button onClick={(e) => handleDeleteReport(e, selectedReport.appointmentId)} className="p-3 bg-[var(--bg-card)] rounded-xl text-orange-400 hover:text-orange-600 hover:bg-orange-50 transition-all" title="Excluir apenas a Memória"><Trash2 size={18}/></button>
+                      <button onClick={(e) => handleDeleteAppointment(e, selectedReport.appointmentId)} className="p-3 bg-red-50 rounded-xl text-red-500 hover:text-red-700 hover:bg-red-100 transition-all" title="Excluir Compromisso e Memória"><X size={18}/></button>
                     </div>
                   </div>
                   <h2 className="text-2xl sm:text-3xl font-semibold text-[var(--text-main)] uppercase leading-tight pr-16 sm:pr-0">{appointments.find(a => a.id === selectedReport.appointmentId)?.title}</h2>
@@ -1876,11 +1980,11 @@ _Enviado via AGENDEI IA_
               <Trash2 size={32} className="text-red-500" />
             </div>
             <h3 className="text-2xl font-semibold uppercase text-[var(--text-main)] mb-4">Confirmar Exclusão</h3>
-            <p className="text-[14px] font-semibold text-slate-500 mb-8">
+            <p className="text-[13px] font-semibold text-slate-500 mb-8">
               {deleteConfirmation.type === 'appointment' 
                 ? 'Deseja realmente excluir este compromisso e todos os seus dados?' 
                 : deleteConfirmation.type === 'report'
-                  ? 'Deseja realmente excluir a ata desta reunião? O compromisso será mantido.'
+                  ? 'Deseja realmente excluir a memória desta reunião? O compromisso será mantido.'
                   : deleteConfirmation.type === 'all_data'
                     ? 'Deseja realmente APAGAR TODOS OS DADOS da sua agenda? Esta ação não pode ser desfeita.'
                     : 'Deseja realmente desativar o espelhamento? O link atual parará de funcionar.'}
@@ -1922,7 +2026,7 @@ _Enviado via AGENDEI IA_
             ) : (
               <div className="space-y-4">
                 <div className="bg-[var(--bg-panel)] p-4 rounded-xl border border-[var(--border-subtle)] text-left mb-6">
-                  <p className="text-[9px] font-semibold text-[var(--brand)] uppercase mb-1 tracking-wide">Link de Acesso</p>
+                  <p className="text-[12px] font-semibold text-[var(--brand)] uppercase mb-1 tracking-wide">Link de Acesso</p>
                   <p className="text-[10px] text-[var(--text-main)]/40 break-all font-mono">{`${window.location.origin}/mirror/${mirrorId}`}</p>
                 </div>
                 
@@ -1932,13 +2036,13 @@ _Enviado via AGENDEI IA_
                       navigator.clipboard.writeText(`${window.location.origin}/mirror/${mirrorId}`).catch(e => console.error(e));
                       alert("Link copiado!");
                     }}
-                    className="bg-white/5 py-4 rounded-xl text-[9px] font-semibold uppercase tracking-wide text-[var(--text-main)] border border-[var(--border-subtle)] hover:bg-white/10"
+                    className="bg-white/5 py-4 rounded-xl text-[12px] font-semibold uppercase tracking-wide text-[var(--text-main)] border border-[var(--border-subtle)] hover:bg-white/10"
                   >
                     Copiar Link
                   </button>
                   <button 
                     onClick={syncAllToFirestore}
-                    className="bg-blue-500/20 border border-blue-500/30 py-4 rounded-xl text-[9px] font-semibold uppercase tracking-wide text-blue-400 hover:bg-blue-500/30"
+                    className="bg-blue-500/20 border border-blue-500/30 py-4 rounded-xl text-[12px] font-semibold uppercase tracking-wide text-blue-400 hover:bg-blue-500/30"
                   >
                     Sincronizar
                   </button>
@@ -1954,14 +2058,14 @@ _Enviado via AGENDEI IA_
                       }).catch(e => console.error("Share error:", e));
                     }
                   }}
-                  className="w-full bg-[var(--brand)] py-4 rounded-xl text-[9px] font-semibold uppercase tracking-wide text-black shadow-md hover:scale-105"
+                  className="w-full bg-[var(--brand)] py-4 rounded-xl text-[12px] font-semibold uppercase tracking-wide text-black shadow-md hover:scale-105"
                 >
                   Enviar Link para WhatsApp
                 </button>
                 
                 <button 
                   onClick={() => setDeleteConfirmation({ type: 'mirror', id: 'mirror' })}
-                  className="w-full mt-4 py-3 text-[9px] font-semibold uppercase text-red-500/50 hover:text-red-500 transition-colors"
+                  className="w-full mt-4 py-3 text-[12px] font-semibold uppercase text-red-500/50 hover:text-red-500 transition-colors"
                 >
                   Desativar Serviço
                 </button>
@@ -1992,7 +2096,7 @@ _Enviado via AGENDEI IA_
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6 mb-8 text-[var(--text-main)]/80 text-xs leading-relaxed text-justify uppercase font-medium tracking-tight">
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6 mb-8 text-[var(--text-main)]/80 text-[13px] leading-relaxed text-justify uppercase font-medium tracking-tight">
               <p>Ao utilizar o sistema <span className="text-[var(--brand)] font-bold">AGENDEI | AGENDAMENTO INTELIGENTE</span>, você compreende e concorda com os seguintes termos:</p>
               
               <div className="space-y-4">
@@ -2017,19 +2121,19 @@ _Enviado via AGENDEI IA_
                 </div>
               </div>
 
-              <p className="text-[9px] italic opacity-50 text-center pt-4">ESTES TERMOS PODEM SER ATUALIZADOS A QUALQUER MOMENTO PARA MELHORIA DA SEGURANÇA E CONFORMIDADE.</p>
+              <p className="text-[12px] italic opacity-50 text-center pt-4">ESTES TERMOS PODEM SER ATUALIZADOS A QUALQUER MOMENTO PARA MELHORIA DA SEGURANÇA E CONFORMIDADE.</p>
             </div>
 
             <div className="pt-6 border-t border-[var(--border-subtle)] flex flex-col gap-4">
               <button 
                 onClick={handleAcceptTerms}
-                className="w-full py-5 bg-[var(--brand)] text-black rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(253,216,53,0.3)] flex items-center justify-center gap-3"
+                className="w-full py-5 bg-[var(--brand)] text-black rounded-2xl font-black text-[13px] uppercase tracking-[0.3em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(253,216,53,0.3)] flex items-center justify-center gap-3"
               >
                 <Check size={18} strokeWidth={3} /> LI E ACEITO OS TERMOS
               </button>
               
               {!termsAccepted && (
-                <p className="text-[9px] text-red-500 font-bold uppercase text-center tracking-widest animate-pulse">A aceitação é obrigatória para continuar</p>
+                <p className="text-[12px] text-red-500 font-bold uppercase text-center tracking-widest animate-pulse">A aceitação é obrigatória para continuar</p>
               )}
             </div>
           </div>

@@ -20,8 +20,9 @@ Object.entries(firebaseConfig).forEach(([key, value]) => {
 });
 
 const app = initializeApp(firebaseConfig);
+const databaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID;
 
 // Enable robust offline persistence so writes queue up and sync automatically
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
-});
+}, databaseId);

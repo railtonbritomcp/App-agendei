@@ -26,23 +26,16 @@ async function startServer() {
       
       const formattedLines = text.split('\n').map(line => `> ${line}`).join('\n');
       
-      return `---
-## 🛡️ STATUS JURÍDICO E PRIVACIDADE
-> **Confirmado:** O usuário declarou possuir autorização dos participantes e assumiu as responsabilidades legais conforme os Termos de Uso da Agenda de Voz Inteligente.
+      return `# MEMÓRIA DO REGISTRO EXECUTIVO DA REUNIÃO: ${title || 'PONTOS CHAVE'}
+## Gerado em: ${dateStr}
 
-# ATA DE REUNIÃO: ${title || 'PONTOS CHAVE DA REUNIÃO'}
-## Gerado em: ${dateStr} (Processamento Seguro Local)
-
-Durante a reunião, os participantes deliberaram de forma integrada sobre os pontos centrais e encaminhamentos futuros. Com base nas notas capturadas, registram-se as seguintes declarações e notas estruturadas:
+Durante a reunião, os participantes deliberaram sobre os pontos centrais e encaminhamentos futuros:
 
 ${formattedLines}
 
 ### 📋 DELIBERAÇÕES E PRÓXIMOS PASSOS:
 * **Alinhamento:** Todos os pontos listados acima foram arquivados com sucesso no histórico deste compromisso.
-* **Encaminhamentos:** As ações futuras decorrentes destas discussões serão acompanhadas diretamente pelo painel principal da agenda.
-
----
-*Aviso: Este relatório foi estruturado de forma inteligente pelo motor local seguro da Agenda de Voz Inteligente. Para ativar a redação de atas profissional avançada por IA do Gemini, insira sua chave GEMINI_API_KEY no menu 'Settings' (Configurações) do AI Studio.*`;
+* **Encaminhamentos:** As ações futuras decorrentes destas discussões serão acompanhadas diretamente pelo painel principal da agenda.`;
     };
 
     if (!apiKey) {
@@ -63,15 +56,14 @@ ${formattedLines}
           }
         }
       });
-
-      const response = await ai.models.generateContent({ 
+      const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
-        contents: `Transcrição: "${transcript}${termsAccepted ? '\n\n[LI E ACEITO AS RESPONSABILIDADES]' : ''}"`,
+        contents: `Transcrição/Notas: "${transcript}${termsAccepted ? '\n\n[LI E ACEITO AS RESPONSABILIDADES]' : ''}"`,
         config: {
-          systemInstruction: `Analise e processe transcrições de reuniões em ${language}. 
-                
+          systemInstruction: `Analise e processe as entradas da reunião (áudio transcrito ou notas digitadas) em ${language}.
+               
         # PERSONA: "CÉREBRO DA AGENDA DE VOZ INTELIGENTE"
-        Você é a inteligência central de um aplicativo SaaS (Software as a Service) de produtividade. Sua missão é transformar áudios confusos de reuniões em memórias executivas de alto valor, organizadas para tablets e celulares.
+        Você é a inteligência central de um aplicativo SaaS (Software as a Service) de produtividade. Sua missão é transformar informações capturadas durante ou após uma reunião (seja voz longa ou apenas os pontos principais digitados) em uma memória executiva de alto valor, organizada para tablets e celulares. Lembre-se que frequentemente os usuários apenas digitam os pontos principais em vez de gravar a reunião inteira.
         
         # PROTOCOLO DE SEGURANÇA E TERMOS LEGAIS
         Você só deve processar informações se a entrada do usuário contiver a tag: [LI E ACEITO AS RESPONSABILIDADES].
@@ -80,22 +72,19 @@ ${formattedLines}
         1. Use Markdown extensivamente (Emojis, Negrito, Tabelas) para facilitar a leitura em telas pequenas.
         2. Idioma: Português do Brasil (PT-BR).
         3. Seja conciso: Clientes de app de agendamento querem ler rápido e agir.
+        4. Foque em criar uma Memória de Reunião com os pontos-chave discutidos.
         
-        # ESTRUTURA DA "MEMÓRIA DA REUNIÃO" (OUTPUT)
-        ---
-        ## 🛡️ STATUS JURÍDICO E PRIVACIDADE
-        > **Confirmado:** O usuário declarou possuir autorização dos participantes e assumiu as responsabilidades legais conforme os Termos de Uso da Agenda de Voz Inteligente.
-        
-        # ATA DE REUNIÃO
-        ## [Título Gerado pela IA]
+        # ESTRUTURA DA "MEMÓRIA DO REGISTRO EXECUTIVO DA REUNIÃO" (OUTPUT)
+        # MEMÓRIA DO REGISTRO EXECUTIVO DA REUNIÃO
+        ## [Título Gerado pela IA com base no contexto]
         ## [Data e Hora]
         
-        [Redija a ata como um texto contínuo, formal e fluido, narrando as discussões, decisões tomadas e os encaminhamentos/agendamentos futuros de forma integrada, sem tópicos ou tabelas.]
+        [Redija a memória do registro executivo da reunião detalhando as principais abordagens e discussões, decisões tomadas e encaminhamentos/agendamentos futuros. A redação deve ser executiva, fluida e direta, refletindo a essência das notas fornecidas de forma clara.]
         
         ---
         # REGRAS RESTRITIVAS (GUARDRAILS)
-        - Nunca invente promessas ou datas que não foram ditas.
-        - Se houver conflito de informações no áudio, aponte como "Ponto de Atenção".
+        - Nunca invente promessas ou datas que não foram citadas na entrada original.
+        - Se houver conflito de informações na entrada, aponte como "Ponto de Atenção".
         - Mantenha a saída limpa e profissional, pronta para ser copiada para o WhatsApp ou E-mail.`,
           responseMimeType: "application/json",
           responseSchema: {

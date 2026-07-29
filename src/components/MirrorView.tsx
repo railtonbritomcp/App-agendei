@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { format, addDays, subDays } from 'date-fns';
+import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import Markdown from 'react-markdown';
 import { 
-  NotebookPen, Sparkles, Clock, Calendar as CalendarIcon, 
+  NotebookPen, Sparkles, Calendar as CalendarIcon, 
   ChevronLeft, ChevronRight, Info, RefreshCw, LayoutGrid, List, FileText,
-  Home, Settings, Share2
+  Home, Share2, X
 } from 'lucide-react';
 
 const RarbCodingLogo = () => (
@@ -38,6 +39,72 @@ const MirrorView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [activeTab, setActiveTab] = useState('home');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [selectedReportApp, setSelectedReportApp] = useState<any | null>(null);
+
+  const handleShare = async (e: React.MouseEvent, app: any) => {
+    e.stopPropagation();
+    let text = '';
+    const dateFormatted = app.date ? app.date.split('-').reverse().join('/') : '';
+
+    if (app.hasReport && app.markdownReport) {
+      text = `📌 *MEMÓRIA DO REGISTRO EXECUTIVO DA REUNIÃO: ${(app.title || 'REUNIÃO').toUpperCase()}*\n📅 Data: ${dateFormatted} às ${app.time}\n📍 Local: ${app.location || 'Não especificado'}\n\n${app.markdownReport}\n\n_Enviado via AGENDEI IA_`.trim();
+    } else {
+      text = `📌 *COMPROMISSO EXECUTIVO: ${(app.title || 'REUNIÃO').toUpperCase()}*\n📅 Data: ${dateFormatted}\n⏰ Horário: ${app.time} (Duração: ${app.duration} min)\n📍 Local: ${app.location || 'Não especificado'}\n${app.description ? `📋 Pautas: ${app.description}` : ''}\n\n_Enviado via AGENDEI IA_`.trim();
+    }
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: app.hasReport ? `Memória Executiva: ${app.title}` : `AGENDA: ${app.title}`,
+          text: text,
+        });
+      } catch (err) {
+        if (err instanceof Error && err.name !== 'AbortError') {
+          console.error("Erro ao compartilhar", err);
+          try {
+            await navigator.clipboard.writeText(text);
+            setCopiedId(app.id);
+            setTimeout(() => setCopiedId(null), 2500);
+            alert('Memória do registro executivo da reunião copiada para a área de transferência!');
+          } catch (e) {
+            console.error("Clipboard error:", e);
+          }
+        }
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopiedId(app.id);
+        setTimeout(() => setCopiedId(null), 2500);
+        alert('Memória do registro executivo da reunião copiada para a área de transferência!');
+      } catch (err) {
+        console.error("Clipboard error:", err);
+      }
+    }
+  };
+
+  const scheduledDates = useMemo(() => {
+    const dates = appointments.map(app => app.date);
+    return Array.from(new Set(dates)).sort();
+  }, [appointments]);
+
+  const goToPreviousScheduledDay = () => {
+    const currentDateStr = format(selectedDate, 'yyyy-MM-dd');
+    const prevDates = scheduledDates.filter(date => date < currentDateStr);
+    if (prevDates.length > 0) {
+      const prevDateStr = prevDates[prevDates.length - 1];
+      setSelectedDate(new Date(`${prevDateStr}T12:00:00`));
+    }
+  };
+
+  const goToNextScheduledDay = () => {
+    const currentDateStr = format(selectedDate, 'yyyy-MM-dd');
+    const nextDateStr = scheduledDates.find(date => date > currentDateStr);
+    if (nextDateStr) {
+      setSelectedDate(new Date(`${nextDateStr}T12:00:00`));
+    }
+  };
 
   useEffect(() => {
     console.log("MirrorView: Tentando conectar ao mirrorId:", mirrorId);
@@ -205,13 +272,13 @@ const MirrorView: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => setSelectedDate(prev => subDays(prev, 1))} className="w-10 h-10 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl flex items-center justify-center text-[var(--text-main)] hover:bg-[var(--bg-card-alt)] transition-all">
+              <button onClick={goToPreviousScheduledDay} className="w-10 h-10 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl flex items-center justify-center text-[var(--text-main)] hover:bg-[var(--bg-card-alt)] transition-all">
                 <ChevronLeft size={20} />
               </button>
               <button onClick={() => setSelectedDate(new Date())} className="px-3 h-10 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl flex items-center justify-center text-[var(--text-main)] text-[10px] font-bold uppercase tracking-widest hover:bg-[var(--bg-card-alt)] transition-all">
                 Hoje
               </button>
-              <button onClick={() => setSelectedDate(prev => addDays(prev, 1))} className="w-10 h-10 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl flex items-center justify-center text-[var(--text-main)] hover:bg-[var(--bg-card-alt)] transition-all">
+              <button onClick={goToNextScheduledDay} className="w-10 h-10 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl flex items-center justify-center text-[var(--text-main)] hover:bg-[var(--bg-card-alt)] transition-all">
                 <ChevronRight size={20} />
               </button>
             </div>
@@ -222,7 +289,11 @@ const MirrorView: React.FC = () => {
         <main className="space-y-4">
           {filteredAppointments.length > 0 ? (
             filteredAppointments.map((app) => (
-              <div key={app.id} className="group rounded-xl sm:rounded-2xl p-3 sm:p-4 transition-all border-l-4 sm:border-l-6 border-l-[#FDD835] relative shadow-sm w-full overflow-hidden bg-[#FEF9C3] border border-yellow-300">
+              <div 
+                key={app.id} 
+                onClick={() => app.hasReport && setSelectedReportApp(app)}
+                className={`group rounded-xl sm:rounded-2xl p-3 sm:p-4 transition-all border-l-4 sm:border-l-6 border-l-[#FDD835] relative shadow-sm w-full overflow-hidden bg-[#FEF9C3] border border-yellow-300 ${app.hasReport ? 'cursor-pointer hover:shadow-md' : ''}`}
+              >
                 <div className="flex flex-col gap-3">
                   <div className="flex items-start justify-between">
                     <h4 className="text-[14px] sm:text-[15px] font-bold text-black uppercase tracking-tight leading-tight">
@@ -265,8 +336,38 @@ const MirrorView: React.FC = () => {
                       )}
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <div className="p-2 bg-black/5 border border-black/10 rounded-lg text-black/30"><Share2 size={13}/></div>
-                      <div className="p-2 bg-black/5 border border-black/10 rounded-lg text-black/30"><LayoutGrid size={13}/></div>
+                      <button
+                        onClick={(e) => handleShare(e, app)}
+                        title="Compartilhar Compromisso / Memória Executiva"
+                        className="px-3 py-1.5 bg-black/10 hover:bg-[#0A1931] hover:text-[var(--brand)] border border-black/20 rounded-lg text-black font-bold transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shadow-sm"
+                      >
+                        <Share2 size={13} />
+                        <span className="text-[9px] font-black uppercase tracking-wider">
+                          {copiedId === app.id ? 'Copiado!' : 'Compartilhar'}
+                        </span>
+                      </button>
+
+                      {app.hasReport ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedReportApp(app);
+                          }}
+                          title="Ver Memória da Reunião"
+                          className="px-3 py-1.5 bg-[#0A1931] text-[var(--brand)] hover:bg-black hover:text-white border border-black/20 rounded-lg font-bold transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shadow-sm"
+                        >
+                          <FileText size={13} />
+                          <span className="text-[9px] font-black uppercase tracking-wider">Ver Memória</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => handleShare(e, app)}
+                          title="Detalhes"
+                          className="p-1.5 bg-black/5 hover:bg-black/10 border border-black/10 rounded-lg text-black/60 transition-all cursor-pointer"
+                        >
+                          <LayoutGrid size={13} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -280,6 +381,54 @@ const MirrorView: React.FC = () => {
             </div>
           )}
         </main>
+
+        {/* Modal de Memória da Reunião no Espelhamento */}
+        {selectedReportApp && (
+          <div className="fixed inset-0 z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4 pb-0 sm:pb-8 animate-in fade-in duration-300">
+            <div className="absolute inset-0 bg-black/75 backdrop-blur-md" onClick={() => setSelectedReportApp(null)}></div>
+            <div className="w-full max-w-xl bg-[#0A1931] rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 max-h-[85vh] overflow-y-auto custom-scrollbar relative shadow-2xl border-2 border-[var(--brand)]/40 text-white z-10 flex flex-col">
+              <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
+                <div className="flex items-center gap-2">
+                  <FileText size={20} className="text-[var(--brand)]" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[var(--brand)]">
+                    Memória do Registro Executivo
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => handleShare(e, selectedReportApp)}
+                    className="px-3 py-2 bg-[var(--brand)] text-black rounded-xl hover:scale-105 transition-all flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider shadow-lg active:scale-95 cursor-pointer"
+                    title="Compartilhar"
+                  >
+                    <Share2 size={14} />
+                    <span>{copiedId === selectedReportApp.id ? 'Copiado!' : 'Compartilhar'}</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectedReportApp(null)}
+                    className="p-2 bg-white/10 rounded-xl text-white hover:bg-red-500 hover:text-white transition-all cursor-pointer"
+                    title="Fechar"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <h2 className="text-xl sm:text-2xl font-bold uppercase text-[var(--brand)] leading-tight mb-1">
+                  {selectedReportApp.title}
+                </h2>
+                <p className="text-[11px] font-semibold uppercase text-white/60 tracking-wider">
+                  📅 {selectedReportApp.date ? selectedReportApp.date.split('-').reverse().join('/') : ''} às {selectedReportApp.time}
+                  {selectedReportApp.location ? ` | 📍 ${selectedReportApp.location}` : ''}
+                </p>
+              </div>
+
+              <div className="bg-[#112240] p-5 sm:p-6 rounded-2xl border border-white/10 text-[13px] sm:text-[14px] text-slate-200 leading-relaxed space-y-3 markdown-body overflow-y-auto max-h-[50vh]">
+                <Markdown>{selectedReportApp.markdownReport || 'Nenhum relatório disponível.'}</Markdown>
+              </div>
+            </div>
+          </div>
+        )}
 
         <RarbCodingLogo />
       </div>

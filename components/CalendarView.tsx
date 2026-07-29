@@ -58,7 +58,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ appointments, selectedDate,
               <h2 className="text-[21px] sm:text-[23px] font-black text-black uppercase tracking-tight leading-none">
                 {format(currentMonth, 'MMMM', { locale })}
               </h2>
-              <p className="text-[9px] sm:text-[10.5px] font-black text-black/40 tracking-[0.3em] sm:tracking-[0.4em] uppercase mt-1 sm:mt-2">{format(currentMonth, 'yyyy')}</p>
+              <p className="text-[11px] sm:text-[12px] font-black text-black/40 tracking-[0.3em] sm:tracking-[0.4em] uppercase mt-1 sm:mt-2">{format(currentMonth, 'yyyy')}</p>
             </div>
           </div>
           
@@ -80,7 +80,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ appointments, selectedDate,
 
         <div className="grid grid-cols-7 mb-4 sm:mb-6">
           {weekDayLabels.map((day, i) => (
-            <div key={i} className={`text-center text-[9px] sm:text-[11.5px] font-black uppercase tracking-widest ${i === 0 ? 'text-[#EF5350]' : 'text-black/60'}`}>{day}</div>
+            <div key={i} className={`text-center text-[11px] sm:text-[13px] font-black uppercase tracking-widest ${i === 0 ? 'text-[#EF5350]' : 'text-black/60'}`}>{day}</div>
           ))}
         </div>
 
@@ -115,7 +115,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ appointments, selectedDate,
                         : 'text-black/80 hover:bg-yellow-100 hover:shadow-sm'}
                 `}
               >
-                <span className={`text-[13px] sm:text-[15px] font-black`}>
+                <span className={`text-[14px] sm:text-[16px] font-black`}>
                   {format(day, 'd')}
                 </span>
 

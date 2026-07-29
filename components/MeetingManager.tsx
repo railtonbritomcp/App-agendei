@@ -12,8 +12,8 @@ interface MeetingManagerProps {
 }
 
 const TRANSLATIONS: Record<string, any> = {
-  pt: { sessao: 'CAPTURA ATIVA', caption: 'GRAVE OU COMENTE OS PRINCIPAIS PONTOS', finalizar: 'ENCERRAR E GERAR ATAS', ouvindo: 'TRANSCREVENDO...', redigindo: 'REDIGINDO ATA...', sintetizando: 'PROCESSANDO...', erro: 'ERRO DE CONEXÃO', tentar: 'REINICIAR', sintese: 'ANÁLISE DE AUTENTICIDADE', fidelidade: 'PRECISÃO', silenciando: 'CANAL DE ÁUDIO ATIVO', regravar: 'DESCARTAR' },
-  en: { sessao: 'ACTIVE CAPTURE', caption: 'START RECORDING', finalizar: 'GENERATE REPORT', ouvindo: 'TRANSCRIBING...', redigindo: 'DRAFTING...', sintetizando: 'PROCESSING...', erro: 'CONNECTION ERROR', tentar: 'RETRY', sintese: 'AUTHENTICITY ANALYSIS', fidelidade: 'PRECISION', silenciando: 'ACTIVE CHANNEL', regravar: 'DISCARD' },
+  pt: { sessao: 'CAPTURA ATIVA', caption: 'GRAVE OU COMENTE OS PRINCIPAIS PONTOS', finalizar: 'ENCERRAR E GERAR MEMÓRIA', ouvindo: 'TRANSCREVENDO...', redigindo: 'REDIGINDO MEMÓRIA...', sintetizando: 'PROCESSANDO...', erro: 'ERRO DE CONEXÃO', tentar: 'REINICIAR', sintese: 'ANÁLISE DE AUTENTICIDADE', fidelidade: 'PRECISÃO', silenciando: 'CANAL DE ÁUDIO ATIVO', regravar: 'DESCARTAR' },
+  en: { sessao: 'ACTIVE CAPTURE', caption: 'START RECORDING OR TYPING', finalizar: 'GENERATE MEMORY', ouvindo: 'TRANSCRIBING...', redigindo: 'DRAFTING MEMORY...', sintetizando: 'PROCESSING...', erro: 'CONNECTION ERROR', tentar: 'RETRY', sintese: 'AUTHENTICITY ANALYSIS', fidelidade: 'PRECISION', silenciando: 'ACTIVE CHANNEL', regravar: 'DISCARD' },
 };
 
 const MeetingManager: React.FC<MeetingManagerProps> = ({ activeAppointment, onReportGenerated, selectedLanguage, onTimerUpdate, onRecordingStateChange }) => {
@@ -190,7 +190,7 @@ const MeetingManager: React.FC<MeetingManagerProps> = ({ activeAppointment, onRe
       console.error("Erro no processamento IA:", error);
       let friendlyMsg = error.message;
       if (friendlyMsg.includes("GEMINI_API_KEY")) {
-        friendlyMsg = "A chave de API do Gemini (GEMINI_API_KEY) não está configurada! Por favor, configure sua chave no painel de configurações (Settings) do AI Studio no canto superior direito para ativar a geração de atas por Inteligência Artificial.";
+        friendlyMsg = "A chave de API do Gemini (GEMINI_API_KEY) não está configurada! Por favor, configure sua chave no painel de configurações (Settings) do AI Studio no canto superior direito para ativar a geração de memórias executivas por Inteligência Artificial.";
       }
       alert(`Erro: ${friendlyMsg}`);
       setStatus(VoiceState.ERROR); 
@@ -225,20 +225,45 @@ const MeetingManager: React.FC<MeetingManagerProps> = ({ activeAppointment, onRe
 
       <div className="flex flex-col items-center justify-center py-8 sm:py-12 border-2 border-black/5 rounded-[2rem] sm:rounded-[3rem] bg-white/50 mb-6 sm:mb-8 px-4 sm:px-8 relative shadow-inner mx-2 sm:mx-4">
         {status === VoiceState.IDLE && (
-          <div className="flex flex-col items-center">
-            <button 
-              onClick={() => {
-                if (!acceptedTerms) {
-                   alert("Por favor, leia e aceite os termos de responsabilidade antes de gravar.");
-                   return;
-                }
-                startRecording();
-              }} 
-              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-[1.5rem] sm:rounded-[2rem] flex items-center justify-center text-[#0A1931] mb-4 sm:mb-6 transition-all btn-press group bg-[#FFD700] shadow-[0_0_20px_rgba(255,215,0,0.4)] hover:bg-[#FFD700] hover:scale-105 active:scale-95`}
-              aria-label={t.caption}
-            >
-              <Mic size={32} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
-            </button>
+          <div className="flex flex-col items-center w-full">
+            <div className="w-full mb-6 relative">
+              <textarea
+                value={transcriptBuffer}
+                onChange={(e) => {
+                  setTranscriptBuffer(e.target.value);
+                  transcriptRef.current = e.target.value;
+                }}
+                placeholder="Digite os principais pontos da reunião aqui, ou clique no microfone para gravar..."
+                className="w-full h-32 sm:h-40 bg-black/5 text-[#0A1931] font-bold p-4 rounded-2xl border-2 border-black/10 focus:border-[#B8860B]/50 focus:ring-0 focus:outline-none text-[14px] sm:text-[16px] custom-scrollbar placeholder:text-[#0A1931]/40"
+              />
+            </div>
+            
+            <div className="flex flex-wrap items-center justify-center gap-4 mb-6">
+              <button 
+                onClick={() => {
+                  if (!acceptedTerms) { 
+                     alert("Por favor, leia e aceite os termos de responsabilidade antes de gravar.");
+                     return;
+                  }
+                  startRecording();
+                }} 
+                className={`w-16 h-16 sm:w-20 sm:h-20 rounded-[1.5rem] sm:rounded-[2rem] flex items-center justify-center text-[#0A1931] transition-all btn-press group bg-[#FFD700] shadow-[0_0_20px_rgba(255,215,0,0.4)] hover:bg-[#FFD700] hover:scale-105 active:scale-95`}
+                aria-label={t.caption}
+                title="Gravar Áudio"
+              >
+                <Mic size={32} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
+              </button>
+              
+              {transcriptBuffer.trim().length > 0 && (
+                <button 
+                  onClick={() => stopRecordingAndProcess()}
+                  className="px-6 py-4 bg-[#0A1931] text-white rounded-[1.5rem] text-[12px] font-black uppercase tracking-[0.2em] shadow-lg hover:scale-105 active:scale-95 transition-all"
+                >
+                  {t.finalizar}
+                </button>
+              )}
+            </div>
+            
             <p className={`text-[12px] sm:text-[14px] font-black uppercase text-center tracking-[0.3em] sm:tracking-[0.4em] mb-6 text-[#B8860B]`}>{t.caption}</p>
             
             <div className="bg-black/5 p-4 rounded-xl border border-black/10 max-w-md w-full">
