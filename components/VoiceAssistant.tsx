@@ -317,19 +317,20 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onAddAppointment, onFil
         clearTimeout(silenceTimerRef.current);
       }
 
-      let interimTranscript = '';
-      let finalTranscript = '';
+      let interimText = '';
+      let finalText = '';
 
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
+      for (let i = 0; i < event.results.length; ++i) {
+        const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript + ' ';
+          finalText += transcript + ' ';
         } else {
-          interimTranscript += event.results[i][0].transcript;
+          interimText += transcript;
         }
       }
 
-      accumulatedTranscriptRef.current += finalTranscript;
-      const fullText = (accumulatedTranscriptRef.current + interimTranscript).trim();
+      const fullText = (finalText + interimText).trim();
+      accumulatedTranscriptRef.current = finalText.trim();
       setTranscription(fullText);
 
       silenceTimerRef.current = setTimeout(() => {
