@@ -11,7 +11,7 @@ import Markdown from 'react-markdown';
 import { db, isFirebaseConfigured } from './src/lib/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, setDoc, serverTimestamp, onSnapshot, query, where } from 'firebase/firestore';
 import { 
-  Globe, NotebookPen, Sparkles, Clock, X, Plus, ChevronLeft, ChevronRight, Target, Check, Edit2, Trash2, LayoutGrid, Share2, Download, Bell, Home, Calendar as CalendarIcon, Settings, PhoneCall, Monitor, Info, RefreshCw, MoreVertical, Smartphone
+  Globe, NotebookPen, Sparkles, Clock, X, Plus, ChevronLeft, ChevronRight, Target, Check, Edit2, Trash2, LayoutGrid, Share2, Download, Bell, Home, Calendar as CalendarIcon, Settings, PhoneCall, Monitor, Info, RefreshCw, MoreVertical, Smartphone, FileText
 } from 'lucide-react';
 
 const LANGUAGES = [
@@ -1172,7 +1172,7 @@ _Enviado via AGENDEI IA_
     <>
       {showInstallBanner && (
         <div className="fixed top-0 left-0 right-0 z-[2000] p-4 animate-in slide-in-from-top-full duration-500">
-          <div className="bg-[var(--bg-card-alt)] border-2 border-[var(--brand)] rounded-2xl shadow-2xl p-4 flex items-center gap-4 relative max-w-2xl mx-auto">
+          <div className="bg-[var(--bg-card-alt)] border-2 border-[var(--brand)] rounded-2xl shadow-2xl p-4 flex items-center gap-4 relative lg:max-w-6xl max-w-2xl mx-auto transition-all duration-300">
             <button onClick={dismissInstallBanner} className="absolute -top-2 -right-2 w-8 h-8 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-full flex items-center justify-center text-[var(--text-main)] hover:bg-red-500 hover:text-[var(--text-main)] transition-all shadow-md z-10">
               <X size={16} />
             </button>
@@ -1305,7 +1305,7 @@ _Enviado via AGENDEI IA_
         </div>
       )}
 
-    <div className="min-h-screen flex flex-col pb-0 px-4 sm:px-6 md:px-8 max-w-2xl mx-auto w-full">
+    <div className="min-h-screen flex flex-col pb-0 px-4 sm:px-6 md:px-8 lg:max-w-6xl max-w-2xl mx-auto w-full transition-all duration-300">
       <header className="pt-8 pb-4 flex flex-col items-center relative w-full">
         <div className="mb-3 relative">
           <div className="w-[72px] h-[72px] bg-[var(--bg-card)] border-2 border-[var(--brand)] rounded-full flex items-center justify-center text-[var(--text-main)] shadow-[0_0_20px_rgba(253,216,53,0.4)]">
@@ -1670,7 +1670,7 @@ _Enviado via AGENDEI IA_
       </div>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-black border-t border-[var(--border-subtle)] pb-6 pt-3 px-8 flex justify-between items-center z-50 max-w-2xl mx-auto">
+      <nav className="fixed bottom-0 left-0 right-0 bg-black border-t border-[var(--border-subtle)] pb-6 pt-3 px-8 flex justify-between items-center z-50 lg:max-w-6xl max-w-2xl mx-auto transition-all duration-300">
         <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-[var(--brand)]' : 'text-[#9E9E9E] hover:text-[var(--text-main)]'}`}>
           <Home size={28} strokeWidth={2.5} />
           <span className="text-[11px] font-semibold">Início</span>
