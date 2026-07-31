@@ -1,7 +1,7 @@
 {
   "short_name": "Agendei",
-  "name": "Agendei - Assistente de Voz",
-  "description": "Agenda Inteligente e Transcrição de Reuniões",
+  "name": "Agendei - Assistente de Voz Executiva",
+  "description": "Agenda Inteligente e Transcrição de Reuniões com Inteligência Artificial",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -14,12 +14,19 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#0A1931",
-  "background_color": "#0A1931",
+  "theme_color": "#0B1320",
+  "background_color": "#0B1320",
   "orientation": "portrait",
-  "scope": "/"
+  "scope": "/",
+  "categories": ["productivity", "business", "utilities"]
 }

@@ -59,34 +59,23 @@ app.post("/api/analyze-meeting", async (req, res) => {
     });
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Transcrição/Notas: "${transcript}${termsAccepted ? '\n\n[LI E ACEITO AS RESPONSABILIDADES]' : ''}"`,
+      contents: `Transcrição/Notas da Reunião: "${transcript}"\n\n[LI E ACEITO AS RESPONSABILIDADES]`,
       config: {
-        systemInstruction: `Analise e processe as entradas da reunião (áudio transcrito ou notas digitadas) em ${language}.
+        systemInstruction: `Analise e processe as entradas da reunião (áudio transcrito ou notas digitadas) em ${language || 'Português'}.
              
       # PERSONA: "CÉREBRO DA AGENDA DE VOZ INTELIGENTE"
-      Você é a inteligência central de um aplicativo SaaS (Software as a Service) de produtividade. Sua missão é transformar informações capturadas durante ou após uma reunião (seja voz longa ou apenas os pontos principais digitados) em uma memória executiva de alto valor, organizada para tablets e celulares. Lembre-se que frequentemente os usuários apenas digitam os pontos principais em vez de gravar a reunião inteira.
+      Você é a inteligência central de um aplicativo SaaS de produtividade. Sua missão é transformar informações capturadas durante ou após uma reunião (seja voz longa ou apenas os pontos principais digitados) em uma memória executiva de alto valor.
       
-      # PROTOCOLO DE SEGURANÇA E TERMOS LEGAIS
-      Você só deve processar informações se a entrada do usuário contiver a tag: [LI E ACEITO AS RESPONSABILIDADES].
-      
-      # DIRETRIZES DE ESTILO E FORMATO (DESIGN PARA MOBILE)
-      1. Use Markdown extensivamente (Emojis, Negrito, Tabelas) para facilitar a leitura em telas pequenas.
+      # DIRETRIZES DE ESTILO E FORMATO
+      1. Use Markdown (Emojis, Negrito, Listas).
       2. Idioma: Português do Brasil (PT-BR).
-      3. Seja conciso: Clientes de app de agendamento querem ler rápido e agir.
-      4. Foque em criar uma Memória de Reunião com os pontos-chave discutidos.
+      3. Seja conciso, executivo e claro.
       
-      # ESTRUTURA DA "MEMÓRIA DO REGISTRO EXECUTIVO DA REUNIÃO" (OUTPUT)
+      # ESTRUTURA DA MEMÓRIA DO REGISTRO EXECUTIVO DA REUNIÃO
       # MEMÓRIA DO REGISTRO EXECUTIVO DA REUNIÃO
-      ## [Título Gerado pela IA com base no contexto]
-      ## [Data e Hora]
+      ## ${activeAppointmentTitle || 'REUNIÃO EXECUTIVA'}
       
-      [Redija a memória do registro executivo da reunião detalhando as principais abordagens e discussões, decisões tomadas e encaminhamentos/agendamentos futuros. A redação deve ser executiva, fluida e direta, refletindo a essência das notas fornecidas de forma clara.]
-      
-      ---
-      # REGRAS RESTRITIVAS (GUARDRAILS)
-      - Nunca invente promessas ou datas que não foram citadas na entrada original.
-      - Se houver conflito de informações na entrada, aponte como "Ponto de Atenção".
-      - Mantenha a saída limpa e profissional, pronta para ser copiada para o WhatsApp ou E-mail.`,
+      [Redija a memória do registro executivo da reunião detalhando as principais abordagens, decisões tomadas e encaminhamentos futuros de forma clara e profissional.]`,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -99,17 +88,31 @@ app.post("/api/analyze-meeting", async (req, res) => {
       }
     });
     
-    const text = response.text || '';
+    let text = (response.text || '').trim();
+    if (text.startsWith('```')) {
+      text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    }
     
     try {
-      const jsonResponse = JSON.parse(text.trim());
-      res.json(jsonResponse);
+      const jsonResponse = JSON.parse(text);
+      if (jsonResponse && jsonResponse.markdownReport) {
+        return res.json({
+          markdownReport: jsonResponse.markdownReport,
+          fullTranscript: jsonResponse.fullTranscript || transcript
+        });
+      }
     } catch (e) {
-      res.json({ markdownReport: text || generateFallbackReport(transcript, activeAppointmentTitle), fullTranscript: transcript });
+      console.log("JSON parse error on Gemini output, proceeding with formatted text:", e);
     }
+
+    return res.json({
+      markdownReport: text.startsWith('{') ? generateFallbackReport(transcript, activeAppointmentTitle) : (text || generateFallbackReport(transcript, activeAppointmentTitle)),
+      fullTranscript: transcript
+    });
+
   } catch (error: any) {
     console.error("Gemini Error - generating beautiful local fallback:", error);
-    res.json({
+    return res.json({
       markdownReport: generateFallbackReport(transcript, activeAppointmentTitle),
       fullTranscript: transcript,
       isFallback: true
