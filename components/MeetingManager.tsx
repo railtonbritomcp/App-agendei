@@ -61,24 +61,27 @@ const MeetingManager: React.FC<MeetingManagerProps> = ({ activeAppointment, onRe
       
       const recognition = new SpeechRecognition();
       recognition.lang = selectedLanguage.locale?.code || 'pt-BR';
-      recognition.continuous = true;
+      recognition.continuous = false;
       recognition.interimResults = true;
 
       recognition.onresult = (event: any) => {
         if (isPausedRef.current) return;
         
-        let currentSessionFinal = '';
-        let currentSessionInterim = '';
+        let finalPiece = '';
+        let interimPiece = '';
         
         for (let i = 0; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
-            currentSessionFinal += event.results[i][0].transcript + ' ';
+            finalPiece += event.results[i][0].transcript + ' ';
           } else {
-            currentSessionInterim += event.results[i][0].transcript;
+            interimPiece += event.results[i][0].transcript;
           }
         }
         
-        const fullText = (accumulatedFinalRef.current + ' ' + currentSessionFinal + currentSessionInterim).trim();
+        if (finalPiece) {
+          accumulatedFinalRef.current = (accumulatedFinalRef.current + ' ' + finalPiece).trim();
+        }
+        const fullText = (accumulatedFinalRef.current + ' ' + interimPiece).trim();
         transcriptRef.current = fullText;
         setTranscriptBuffer(fullText);
       };
@@ -95,17 +98,24 @@ const MeetingManager: React.FC<MeetingManagerProps> = ({ activeAppointment, onRe
       };
 
       recognition.onend = () => {
-        accumulatedFinalRef.current = transcriptRef.current;
         if (!isStoppingRef.current && !isPausedRef.current) {
           setTimeout(() => {
-            if (recognitionRef.current && !isStoppingRef.current && !isPausedRef.current) {
+            if (!isStoppingRef.current && !isPausedRef.current) {
               try {
-                recognitionRef.current.start();
+                const rec = new SpeechRecognition();
+                rec.lang = selectedLanguage.locale?.code || 'pt-BR';
+                rec.continuous = false;
+                rec.interimResults = true;
+                rec.onresult = recognition.onresult;
+                rec.onerror = recognition.onerror;
+                rec.onend = recognition.onend;
+                recognitionRef.current = rec;
+                rec.start();
               } catch (e) {
                 console.error("Erro ao reiniciar SpeechRecognition no timeout:", e);
               }
             }
-          }, 1000);
+          }, 300);
         }
       };
 

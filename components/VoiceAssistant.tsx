@@ -309,28 +309,33 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onAddAppointment, onFil
 
     const recognition = new SpeechRecognition();
     recognition.lang = selectedLanguage.locale?.code || 'pt-BR';
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = true;
+
+    let accumulatedFinal = '';
 
     recognition.onresult = (event: any) => {
       if (silenceTimerRef.current) {
         clearTimeout(silenceTimerRef.current);
       }
 
-      let interimText = '';
-      let finalText = '';
+      let interimPiece = '';
+      let finalPiece = '';
 
       for (let i = 0; i < event.results.length; ++i) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalText += transcript + ' ';
+          finalPiece += transcript + ' ';
         } else {
-          interimText += transcript;
+          interimPiece += transcript;
         }
       }
 
-      const fullText = (finalText + interimText).trim();
-      accumulatedTranscriptRef.current = finalText.trim();
+      if (finalPiece) {
+        accumulatedFinal = (accumulatedFinal + ' ' + finalPiece).trim();
+      }
+      const fullText = (accumulatedFinal + ' ' + interimPiece).trim();
+      accumulatedTranscriptRef.current = accumulatedFinal;
       setTranscription(fullText);
 
       silenceTimerRef.current = setTimeout(() => {

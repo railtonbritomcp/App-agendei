@@ -1350,8 +1350,8 @@ _Enviado via AGENDEI IA_
             </section>
           )}
 
-          <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
-            <div className="w-full lg:w-1/2 flex flex-col gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:items-start">
+            <div className="w-full lg:col-span-5 flex flex-col gap-4">
               <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <CalendarView 
                   appointments={appointments} 
@@ -1369,7 +1369,7 @@ _Enviado via AGENDEI IA_
               </section>
             </div>
 
-            <div className="w-full lg:w-1/2 flex flex-col gap-4 relative min-h-[400px]">
+            <div className="w-full lg:col-span-7 flex flex-col gap-4 relative min-h-[400px]">
               <section className="space-y-3 w-full pb-28">
                 <div className="flex items-center justify-between px-1 sm:px-2">
                   <div className="flex items-center gap-2 sm:gap-3">
@@ -1393,9 +1393,9 @@ _Enviado via AGENDEI IA_
                   </div>
                 </div>
 
-                <div className="space-y-3 w-full">
+                <div className={selectedDayAppointments.length === 0 ? "w-full" : "grid grid-cols-1 xl:grid-cols-2 gap-3"}>
                   {selectedDayAppointments.length === 0 ? (
-                    <div className="py-20 bg-[#FEF9C3] rounded-[2.5rem] flex flex-col items-center justify-center border-dashed border-2 border-yellow-300 shadow-xl">
+                    <div className="py-20 bg-[#FEF9C3] rounded-[2.5rem] flex flex-col items-center justify-center border-dashed border-2 border-yellow-300 shadow-xl w-full">
                       <LayoutGrid size={36} className="mb-4 text-[#FDD835]/40" />
                       <p className="text-[11.5px] font-bold uppercase tracking-[0.4em] text-black/30">Nada agendado</p>
                     </div>
