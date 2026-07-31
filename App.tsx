@@ -49,7 +49,8 @@ const App: React.FC = () => {
         if (Array.isArray(parsed)) {
           return parsed.map((app: Appointment) => ({
             ...app,
-            reminders: app.reminders || [1440, 60]
+            reminders: app.reminders || [10, 30, 60, 120, 1440],
+            callAlert: app.callAlert !== undefined ? app.callAlert : true
           }));
         }
       }
@@ -104,7 +105,7 @@ const App: React.FC = () => {
   };
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
-  const [manualForm, setManualForm] = useState<{title: string, date: string, time: string, duration: number, description: string, reminders: number[], callAlert: boolean, location: string, category: string}>({ title: '', date: format(selectedDate, 'yyyy-MM-dd'), time: '09:00', duration: 30, description: '', reminders: [1440, 60], callAlert: false, location: '', category: 'Geral' });
+  const [manualForm, setManualForm] = useState<{title: string, date: string, time: string, duration: number, description: string, reminders: number[], callAlert: boolean, location: string, category: string}>({ title: '', date: format(selectedDate, 'yyyy-MM-dd'), time: '09:00', duration: 30, description: '', reminders: [10, 30, 60, 120, 1440], callAlert: true, location: '', category: 'Geral' });
   const [deleteConfirmation, setDeleteConfirmation] = useState<{type: 'appointment' | 'report' | 'all_data' | 'mirror', id: string} | null>(null);
   const [isPro, setIsPro] = useState(false); // Simulando estado de usuário free/pro
   const [theme, setTheme] = useState<string>(() => {
@@ -298,6 +299,27 @@ const App: React.FC = () => {
     alert(`Sincronização concluída! ${successCount} compromissos enviados.`);
   };
   const [incomingCall, setIncomingCall] = useState<{app: Appointment, timeStr: string} | null>(null);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
+    }
+  }, []);
+
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      if (permission === 'granted') {
+        alert("Notificações ativadas com sucesso! Você receberá alertas mesmo com o app minimizado.");
+      } else {
+        alert("Você bloqueou as notificações. Ative nas configurações do navegador para receber alertas.");
+      }
+    } else {
+      alert("Seu navegador não suporta notificações.");
+    }
+  };
   const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -554,8 +576,8 @@ const App: React.FC = () => {
       hasReport: false,
       title: appData.title.toUpperCase(),
       description: appData.description?.toUpperCase() || '',
-      reminders: appData.reminders || [1440, 60],
-      callAlert: appData.callAlert || false
+      reminders: appData.reminders || [10, 30, 60, 120, 1440],
+      callAlert: appData.callAlert !== undefined ? appData.callAlert : true
     };
     
     setAppointments(prev => [...prev, newApp]);
@@ -668,8 +690,8 @@ const App: React.FC = () => {
       time: app.time,
       duration: app.duration,
       description: app.description || '',
-      reminders: app.reminders || [1440, 60],
-      callAlert: app.callAlert || false,
+      reminders: app.reminders || [10, 30, 60, 120, 1440],
+      callAlert: app.callAlert !== undefined ? app.callAlert : true,
       location: app.location || '',
       category: app.category || 'Geral'
     });
@@ -678,7 +700,7 @@ const App: React.FC = () => {
 
   const openCreateModal = () => {
     setEditingAppointment(null);
-    setManualForm({ title: '', date: format(selectedDate, 'yyyy-MM-dd'), time: '09:00', duration: 30, description: '', reminders: [1440, 60], callAlert: false, location: '', category: 'Geral' });
+    setManualForm({ title: '', date: format(selectedDate, 'yyyy-MM-dd'), time: '09:00', duration: 30, description: '', reminders: [10, 30, 60, 120, 1440], callAlert: true, location: '', category: 'Geral' });
     setIsManualModalOpen(true);
   };
 
@@ -1305,9 +1327,19 @@ _Enviado via AGENDEI IA_
           </button>
         )}
 
-        <button className="absolute top-4 right-0 sm:right-2 flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 glass-panel rounded-full text-[12px] sm:text-[10px] font-semibold text-[var(--text-main)] uppercase tracking-wide hover:bg-[var(--brand)] transition-colors">
-          <Globe size={13} /> {selectedLang.label}
-        </button>
+        <div className="absolute top-4 right-0 sm:right-2 flex flex-col items-end gap-2 z-10">
+          <button className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 glass-panel rounded-full text-[12px] sm:text-[10px] font-semibold text-[var(--text-main)] uppercase tracking-wide hover:bg-[var(--brand)] transition-colors">
+            <Globe size={13} /> {selectedLang.label}
+          </button>
+          {notificationPermission !== 'granted' && (
+            <button 
+              onClick={requestNotificationPermission}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 border border-red-500/50 rounded-full text-[9px] sm:text-[10px] font-bold text-red-400 uppercase tracking-wide hover:bg-red-500 hover:text-white transition-colors"
+            >
+              <Bell size={12} className="animate-pulse" /> Ativar Alertas
+            </button>
+          )}
+        </div>
       </header>
 
       {activeTab === 'home' ? (
@@ -1318,56 +1350,72 @@ _Enviado via AGENDEI IA_
             </section>
           )}
 
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <CalendarView 
-              appointments={appointments} 
-              selectedDate={selectedDate} 
-              onDateSelect={setSelectedDate} 
-              onDateDoubleClick={(date) => {
-                setSelectedDate(date);
-                setEditingAppointment(null);
-                setManualForm({ title: '', date: format(date, 'yyyy-MM-dd'), time: '09:00', duration: 30, description: '', reminders: [1440, 60], callAlert: false, location: '', category: 'Geral' });
-                setIsManualModalOpen(true);
-              }}
-              onDelete={() => {}} 
-              selectedLanguage={selectedLang} 
-            />
-          </section>
-
-          <section className="space-y-3 w-full">
-            <div className="flex items-center justify-between px-1 sm:px-2">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-2 h-5 bg-[var(--brand)] rounded-full shadow-[0_0_15px_rgba(253,216,53,0.3)]"></div>
-                <h3 className="text-[11.5px] sm:text-[13px] font-semibold uppercase tracking-[0.15em] sm:tracking-wide text-[var(--text-main)]">Agenda do Dia</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                {selectedDayAppointments.length > 0 && (
-                  <>
-                    <button onClick={syncAllToFirestore} className="w-[38px] h-[38px] sm:w-[46px] sm:h-[46px] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl flex items-center justify-center text-[var(--text-main)] hover:bg-[var(--bg-hover)] shadow-sm transition-all" title="Sincronizar com a Base">
-                      <RefreshCw size={18} className="sm:w-5 sm:h-5 text-blue-400" />
-                    </button>
-                    <button onClick={shareDayAgenda} className="w-[38px] h-[38px] sm:w-[46px] sm:h-[46px] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl flex items-center justify-center text-[var(--text-main)] hover:bg-[var(--bg-hover)] shadow-sm transition-all" title="Compartilhar Agenda do Dia">
-                      <Share2 size={18} className="sm:w-5 sm:h-5 text-blue-300" />
-                    </button>
-                  </>
-                )}
-                <button onClick={openCreateModal} className="w-[46px] h-[46px] sm:w-[55px] sm:h-[55px] bg-[var(--bg-card)] border-2 border-[var(--brand)] rounded-full btn-press flex items-center justify-center text-[var(--text-main)] hover:bg-[var(--brand)] shadow-md transition-all">
-                  <Plus size={23} strokeWidth={3} className="sm:w-7 sm:h-7" />
-                </button>
-              </div>
+          <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
+            <div className="w-full lg:w-1/2 flex flex-col gap-4">
+              <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <CalendarView 
+                  appointments={appointments} 
+                  selectedDate={selectedDate} 
+                  onDateSelect={setSelectedDate} 
+                  onDateDoubleClick={(date) => {
+                    setSelectedDate(date);
+                    setEditingAppointment(null);
+                    setManualForm({ title: '', date: format(date, 'yyyy-MM-dd'), time: '09:00', duration: 30, description: '', reminders: [10, 30, 60, 120, 1440], callAlert: true, location: '', category: 'Geral' });
+                    setIsManualModalOpen(true);
+                  }}
+                  onDelete={() => {}} 
+                  selectedLanguage={selectedLang} 
+                />
+              </section>
             </div>
 
-            <div className="space-y-3 w-full">
-              {selectedDayAppointments.length === 0 ? (
-                <div className="py-20 bg-[#FEF9C3] rounded-[2.5rem] flex flex-col items-center justify-center border-dashed border-2 border-yellow-300 shadow-xl">
-                  <LayoutGrid size={36} className="mb-4 text-[#FDD835]/40" />
-                  <p className="text-[11.5px] font-bold uppercase tracking-[0.4em] text-black/30">Nada agendado</p>
+            <div className="w-full lg:w-1/2 flex flex-col gap-4 relative min-h-[400px]">
+              <section className="space-y-3 w-full pb-28">
+                <div className="flex items-center justify-between px-1 sm:px-2">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-2 h-5 bg-[var(--brand)] rounded-full shadow-[0_0_15px_rgba(253,216,53,0.3)]"></div>
+                    <h3 className="text-[11.5px] sm:text-[13px] font-semibold uppercase tracking-[0.15em] sm:tracking-wide text-[var(--text-main)]">Agenda do Dia</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedDayAppointments.length > 0 && (
+                      <>
+                        <button onClick={syncAllToFirestore} className="w-[38px] h-[38px] sm:w-[46px] sm:h-[46px] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl flex items-center justify-center text-[var(--text-main)] hover:bg-[var(--bg-hover)] shadow-sm transition-all" title="Sincronizar com a Base">
+                          <RefreshCw size={18} className="sm:w-5 sm:h-5 text-blue-400" />
+                        </button>
+                        <button onClick={shareDayAgenda} className="w-[38px] h-[38px] sm:w-[46px] sm:h-[46px] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl flex items-center justify-center text-[var(--text-main)] hover:bg-[var(--bg-hover)] shadow-sm transition-all" title="Compartilhar Agenda do Dia">
+                          <Share2 size={18} className="sm:w-5 sm:h-5 text-blue-300" />
+                        </button>
+                      </>
+                    )}
+                    <button onClick={openCreateModal} className="w-[46px] h-[46px] sm:w-[55px] sm:h-[55px] bg-[var(--bg-card)] border-2 border-[var(--brand)] rounded-full btn-press flex items-center justify-center text-[var(--text-main)] hover:bg-[var(--brand)] shadow-md transition-all">
+                      <Plus size={23} strokeWidth={3} className="sm:w-7 sm:h-7" />
+                    </button>
+                  </div>
                 </div>
-              ) : (
-                selectedDayAppointments.map(renderAppCard)
-              )}
+
+                <div className="space-y-3 w-full">
+                  {selectedDayAppointments.length === 0 ? (
+                    <div className="py-20 bg-[#FEF9C3] rounded-[2.5rem] flex flex-col items-center justify-center border-dashed border-2 border-yellow-300 shadow-xl">
+                      <LayoutGrid size={36} className="mb-4 text-[#FDD835]/40" />
+                      <p className="text-[11.5px] font-bold uppercase tracking-[0.4em] text-black/30">Nada agendado</p>
+                    </div>
+                  ) : (
+                    selectedDayAppointments.map(renderAppCard)
+                  )}
+                </div>
+              </section>
+
+              <div className="hidden lg:block absolute bottom-0 left-0 w-full z-10 pt-8 pb-4">
+                <VoiceAssistant 
+                  onAddAppointment={handleAddAppointment} 
+                  appointments={appointments}
+                  currentSelectedDate={selectedDate}
+                  selectedLanguage={selectedLang}
+                  isDesktopStandalone={true}
+                />
+              </div>
             </div>
-          </section>
+          </div>
         </main>
       ) : activeTab === 'agenda' ? (
         <main className="flex-1 flex flex-col pt-8 pb-20 px-2 animate-in fade-in duration-500">
@@ -1952,15 +2000,30 @@ _Enviado via AGENDEI IA_
                 </header>
 
                 <div className="space-y-6 sm:space-y-8">
-                  <div className="bg-[var(--bg-card)] p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border-2 border-[var(--brand)]/20 text-[13px] sm:text-[15px] text-blue-100 leading-relaxed shadow-inner markdown-body">
+                  <div id="report-content-word" className="bg-[var(--bg-card)] p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border-2 border-[var(--brand)]/20 text-[13px] sm:text-[15px] text-blue-100 leading-relaxed shadow-inner markdown-body">
                     <Markdown>{selectedReport.markdownReport}</Markdown>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-4">
                    <button onClick={() => navigator.clipboard.writeText(selectedReport.markdownReport).catch(e => console.error("Clipboard error:", e))} className="py-4 sm:py-5 bg-[var(--bg-card)] rounded-[1.5rem] text-[10px] font-semibold uppercase text-[var(--text-main)] border-2 border-[var(--border-color)] hover:bg-[var(--bg-card)] transition-all">Copiar Tudo</button>
                    <button onClick={() => handleDownloadPDF(selectedReport)} className="py-4 sm:py-5 bg-[var(--brand)] rounded-[1.5rem] text-[10px] font-semibold uppercase text-black shadow-xl hover:bg-[var(--bg-hover)] transition-all flex items-center justify-center gap-2">
                      <Download size={14} /> Baixar PDF
+                   </button>
+                   <button onClick={() => {
+                     const htmlContent = document.getElementById('report-content-word')?.innerHTML || `<p>${selectedReport.markdownReport.replace(/\n/g, '<br/>')}</p>`;
+                     const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Memoria</title><style>body { font-family: Arial, sans-serif; }</style></head><body>`;
+                     const footer = "</body></html>";
+                     const sourceHTML = header + htmlContent + footer;
+                     const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
+                     const fileDownload = document.createElement("a");
+                     document.body.appendChild(fileDownload);
+                     fileDownload.href = source;
+                     fileDownload.download = `Memoria_Executiva.doc`;
+                     fileDownload.click();
+                     document.body.removeChild(fileDownload);
+                   }} className="py-4 sm:py-5 bg-blue-600 rounded-[1.5rem] text-[10px] font-semibold uppercase text-white shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
+                     <FileText size={14} /> Exportar Word
                    </button>
                    <button onClick={() => handleShareReport(selectedReport)} className="py-4 sm:py-5 bg-[var(--bg-panel)] rounded-[1.5rem] text-[10px] font-semibold uppercase text-[var(--text-main)] shadow-xl hover:bg-[var(--brand)] transition-all flex items-center justify-center gap-2">
                      <Share2 size={14} /> Enviar

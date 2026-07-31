@@ -11,6 +11,7 @@ interface VoiceAssistantProps {
   currentSelectedDate: Date;
   selectedLanguage: { id: string; label: string; name: string; locale: any };
   isInsideModal?: boolean;
+  isDesktopStandalone?: boolean;
 }
 
 const localParseText = (text: string, defaultDate: Date) => {
@@ -76,11 +77,12 @@ const localParseText = (text: string, defaultDate: Date) => {
     description: descriptionStr,
     location: locationStr,
     category: 'Geral',
-    callAlert: false
+    reminders: [10, 30, 60, 120, 1440],
+    callAlert: true
   };
 };
 
-const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onAddAppointment, onFillForm, currentSelectedDate, selectedLanguage, isInsideModal }) => {
+const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onAddAppointment, onFillForm, currentSelectedDate, selectedLanguage, isInsideModal, isDesktopStandalone }) => {
   const [voiceState, setVoiceState] = useState<VoiceState>(VoiceState.IDLE);
   const [transcription, setTranscription] = useState<string>('');
   const [lastActionStatus, setLastActionStatus] = useState<'success' | 'error' | null>(null);
@@ -88,11 +90,16 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onAddAppointment, onFil
   const [history, setHistory] = useState<any[]>([]);
   
   const recognitionRef = useRef<any>(null);
+  const silenceTimerRef = useRef<any>(null);
+  const accumulatedTranscriptRef = useRef<string>('');
 
   useEffect(() => {
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
+      }
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
       }
     };
   }, []);
@@ -100,6 +107,9 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onAddAppointment, onFil
   const stopAssistant = useCallback(() => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
+    }
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
     }
     setVoiceState(VoiceState.IDLE);
     setIsProcessing(false);
@@ -201,7 +211,7 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onAddAppointment, onFil
                 location: args.local || '',
                 category: args.categoria || 'Geral',
                 potentialConflict: false,
-                callAlert: args.me_ligar_antes || false
+                callAlert: args.me_ligar_antes !== undefined ? args.me_ligar_antes : true
               });
             } else {
               onAddAppointment({
@@ -213,7 +223,8 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onAddAppointment, onFil
                 location: args.local || 'Não informado',
                 category: args.categoria || 'Geral',
                 potentialConflict: false,
-                callAlert: args.me_ligar_antes || false
+                reminders: [10, 30, 60, 120, 1440],
+                callAlert: args.me_ligar_antes !== undefined ? args.me_ligar_antes : true
               });
             }
             
@@ -287,23 +298,46 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onAddAppointment, onFil
       return;
     }
 
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+    }
+    accumulatedTranscriptRef.current = '';
+
     setLastActionStatus(null);
     setVoiceState(VoiceState.LISTENING);
     setTranscription('');
 
     const recognition = new SpeechRecognition();
     recognition.lang = selectedLanguage.locale?.code || 'pt-BR';
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
 
     recognition.onresult = (event: any) => {
-      const current = event.resultIndex;
-      const transcript = event.results[current][0].transcript;
-      setTranscription(transcript);
-
-      if (event.results[current].isFinal) {
-        processCommand(transcript);
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
       }
+
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript + ' ';
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+
+      accumulatedTranscriptRef.current += finalTranscript;
+      const fullText = (accumulatedTranscriptRef.current + interimTranscript).trim();
+      setTranscription(fullText);
+
+      silenceTimerRef.current = setTimeout(() => {
+        if (fullText) {
+          recognition.stop();
+          processCommand(fullText);
+        }
+      }, 2500); // 2.5 seconds of silence
     };
 
     recognition.onerror = (event: any) => {
@@ -322,7 +356,7 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onAddAppointment, onFil
   };
 
   return (
-    <div className={`${isInsideModal ? 'relative mt-4 mb-8' : 'fixed bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 z-[400]'} flex flex-col items-center gap-3 sm:gap-5 w-full max-w-xs px-4 sm:px-6`}>
+    <div className={`${isInsideModal ? 'relative mt-4 mb-8' : isDesktopStandalone ? 'relative mx-auto mt-4 mb-2 z-[40]' : 'fixed bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 z-[400]'} flex flex-col items-center gap-3 sm:gap-5 w-full max-w-xs px-4 sm:px-6`}>
       
       {lastActionStatus === 'success' && (
         <div className="px-4 sm:px-6 py-2 sm:py-3 rounded-full bg-[#0F52BA] text-[var(--text-main)] shadow-2xl flex items-center gap-2 sm:gap-3 animate-in slide-in-from-bottom-3">

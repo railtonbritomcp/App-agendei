@@ -29,14 +29,14 @@ ${formattedLines}
 * **Encaminhamentos:** As ações futuras decorrentes destas discussões serão acompanhadas diretamente pelo painel principal da agenda.`;
 };
 
-// API Route: Health check
-app.get("/api/health", (req, res) => {
+// Helper handler: Health Check
+const handleHealth = (req: express.Request, res: express.Response) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
+};
 
-// API Route: Analyze Meeting
-app.post("/api/analyze-meeting", async (req, res) => {
-  const { transcript, language, termsAccepted, activeAppointmentTitle } = req.body;
+// Helper handler: Analyze Meeting
+const handleAnalyzeMeeting = async (req: express.Request, res: express.Response) => {
+  const { transcript = '', language = 'Português', termsAccepted = true, activeAppointmentTitle = '' } = req.body || {};
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
@@ -118,12 +118,12 @@ app.post("/api/analyze-meeting", async (req, res) => {
       isFallback: true
     });
   }
-});
+};
 
-// API Route: Voice Assistant
-app.post("/api/voice-assistant", async (req, res) => {
+// Helper handler: Voice Assistant
+const handleVoiceAssistant = async (req: express.Request, res: express.Response) => {
   try {
-    const { message, history, selectedDate } = req.body;
+    const { message = '', history = [], selectedDate = '' } = req.body || {};
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
@@ -231,4 +231,14 @@ app.post("/api/voice-assistant", async (req, res) => {
     console.error("Voice Assistant Error:", error);
     res.status(500).json({ error: error.message });
   }
-});
+};
+
+// Route Registrations (both /api/route and /route for Vercel rewrite compatibility)
+app.get("/api/health", handleHealth);
+app.get("/health", handleHealth);
+
+app.post("/api/analyze-meeting", handleAnalyzeMeeting);
+app.post("/analyze-meeting", handleAnalyzeMeeting);
+
+app.post("/api/voice-assistant", handleVoiceAssistant);
+app.post("/voice-assistant", handleVoiceAssistant);

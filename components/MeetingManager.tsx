@@ -27,6 +27,7 @@ const MeetingManager: React.FC<MeetingManagerProps> = ({ activeAppointment, onRe
   const intervalRef = useRef<any>(null);
   const recognitionRef = useRef<any>(null);
   const transcriptRef = useRef('');
+  const accumulatedFinalRef = useRef('');
   const isStoppingRef = useRef(false);
   const isPausedRef = useRef(false);
   const timerRef = useRef(0);
@@ -53,6 +54,7 @@ const MeetingManager: React.FC<MeetingManagerProps> = ({ activeAppointment, onRe
       setStatus(VoiceState.RECORDING);
       setTranscriptBuffer('');
       transcriptRef.current = '';
+      accumulatedFinalRef.current = '';
       setTimer(0);
       timerRef.current = 0;
       setMicError(null);
@@ -65,16 +67,18 @@ const MeetingManager: React.FC<MeetingManagerProps> = ({ activeAppointment, onRe
       recognition.onresult = (event: any) => {
         if (isPausedRef.current) return;
         
-        let finalTranscript = '';
-        let interimTranscript = '';
+        let currentSessionFinal = '';
+        let currentSessionInterim = '';
+        
         for (let i = 0; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript + ' ';
+            currentSessionFinal += event.results[i][0].transcript + ' ';
           } else {
-            interimTranscript += event.results[i][0].transcript;
+            currentSessionInterim += event.results[i][0].transcript;
           }
         }
-        const fullText = (finalTranscript + interimTranscript).trim();
+        
+        const fullText = (accumulatedFinalRef.current + ' ' + currentSessionFinal + currentSessionInterim).trim();
         transcriptRef.current = fullText;
         setTranscriptBuffer(fullText);
       };
@@ -91,6 +95,7 @@ const MeetingManager: React.FC<MeetingManagerProps> = ({ activeAppointment, onRe
       };
 
       recognition.onend = () => {
+        accumulatedFinalRef.current = transcriptRef.current;
         if (!isStoppingRef.current && !isPausedRef.current) {
           setTimeout(() => {
             if (recognitionRef.current && !isStoppingRef.current && !isPausedRef.current) {

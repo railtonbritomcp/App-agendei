@@ -423,8 +423,29 @@ const MirrorView: React.FC = () => {
                 </p>
               </div>
 
-              <div className="bg-[#112240] p-5 sm:p-6 rounded-2xl border border-white/10 text-[13px] sm:text-[14px] text-slate-200 leading-relaxed space-y-3 markdown-body overflow-y-auto max-h-[50vh]">
+              <div id="mirror-report-content-word" className="bg-[#112240] p-5 sm:p-6 rounded-2xl border border-white/10 text-[13px] sm:text-[14px] text-slate-200 leading-relaxed space-y-3 markdown-body overflow-y-auto max-h-[50vh]">
                 <Markdown>{selectedReportApp.markdownReport || 'Nenhum relatório disponível.'}</Markdown>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => {
+                     const htmlContent = document.getElementById('mirror-report-content-word')?.innerHTML || `<p>${(selectedReportApp.markdownReport || '').replace(/\n/g, '<br/>')}</p>`;
+                     const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Memoria</title><style>body { font-family: Arial, sans-serif; }</style></head><body>`;
+                     const footer = "</body></html>";
+                     const sourceHTML = header + htmlContent + footer;
+                     const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
+                     const fileDownload = document.createElement("a");
+                     document.body.appendChild(fileDownload);
+                     fileDownload.href = source;
+                     fileDownload.download = `Memoria_Executiva.doc`;
+                     fileDownload.click();
+                     document.body.removeChild(fileDownload);
+                  }}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider shadow-lg active:scale-95 cursor-pointer"
+                >
+                  <FileText size={14} /> Exportar Word
+                </button>
               </div>
             </div>
           </div>
