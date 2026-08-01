@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
         tailwindcss(),
         VitePWA({
           registerType: 'autoUpdate',
-          includeAssets: ['logo.svg', 'icon-192.png', 'icon-512.png'],
+          includeAssets: ['logo.svg', 'icon-192.png', 'icon-512.png', 'icon-180.png', 'apple-touch-icon.png', 'favicon.png', 'favicon.ico', 'icon-512-maskable.png'],
           manifest: {
             name: "Agendei - Assistente de Voz",
             short_name: "Agendei",
@@ -38,6 +38,12 @@ export default defineConfig(({ mode }) => {
                 sizes: "512x512",
                 type: "image/png",
                 purpose: "any maskable"
+              },
+              {
+                src: "/icon-512-maskable.png",
+                sizes: "512x512",
+                type: "image/png",
+                purpose: "maskable"
               }
             ]
           },
