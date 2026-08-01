@@ -40,6 +40,74 @@ const RarbCodingLogo = () => (
   </div>
 );
 
+function getEasterDate(year: number): Date {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const L = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * L) / 451);
+  const month = Math.floor((h + L - 7 * m + 114) / 31);
+  const day = ((h + L - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+
+function getBrazilianHoliday(dateStr: string): string | null {
+  if (!dateStr) return null;
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return null;
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+
+  const dateKey = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+  const fixedHolidays: Record<string, string> = {
+    '01-01': 'Confraternização Universal (Ano Novo)',
+    '04-21': 'Tiradentes',
+    '05-01': 'Dia do Trabalho',
+    '09-07': 'Independência do Brasil',
+    '10-12': 'Nossa Senhora Aparecida',
+    '11-02': 'Finados',
+    '11-15': 'Proclamação da República',
+    '11-20': 'Dia Nacional de Zumbi e da Consciência Negra',
+    '12-25': 'Natal',
+  };
+
+  if (fixedHolidays[dateKey]) {
+    return fixedHolidays[dateKey];
+  }
+
+  const easter = getEasterDate(year);
+  const goodFriday = new Date(easter);
+  goodFriday.setDate(easter.getDate() - 2);
+  
+  const carnival = new Date(easter);
+  carnival.setDate(easter.getDate() - 47);
+
+  const corpusChristi = new Date(easter);
+  corpusChristi.setDate(easter.getDate() + 60);
+
+  const checkDate = new Date(year, month - 1, day);
+  const isSameDay = (d1: Date, d2: Date) => 
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate();
+
+  if (isSameDay(checkDate, carnival)) return 'Carnaval (Terça-feira)';
+  if (isSameDay(checkDate, goodFriday)) return 'Sexta-feira Santa (Paixão de Cristo)';
+  if (isSameDay(checkDate, corpusChristi)) return 'Corpus Christi';
+
+  return null;
+}
+
 const App: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>(() => {
     try {
@@ -826,6 +894,7 @@ _Enviado via AGENDEI IA_
 
   const renderAppCard = (app: Appointment) => {
     const isReport = app.hasReport;
+    const holidayName = getBrazilianHoliday(app.date);
     return (
       <div key={app.id} 
         onClick={() => isReport ? setSelectedReport(reports.find(r => r.appointmentId === app.id) || null) : setActiveAppointmentId(app.id)}
@@ -845,6 +914,13 @@ _Enviado via AGENDEI IA_
             )}
           </div>
           
+          {holidayName && (
+            <div className="flex items-center gap-2 px-2.5 py-1.5 bg-amber-500/15 border border-amber-500/30 rounded-xl text-amber-300 text-[10px] font-bold">
+              <span>⚠️</span>
+              <span><strong>Feriado Nacional:</strong> {holidayName}</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 px-2 py-1">
             <div className="flex items-center gap-2">
               <span className="text-[9px] font-black text-white/40 uppercase tracking-wider">Status:</span>
@@ -1304,6 +1380,16 @@ _Enviado via AGENDEI IA_
                    <input type="time" className="w-full bg-[#1A2B4C] border-2 border-[#233559] rounded-2xl px-6 py-4 text-xs font-bold text-white" value={manualForm.time} onChange={e => setManualForm({...manualForm, time: e.target.value})} required />
                 </div>
               </div>
+
+              {getBrazilianHoliday(manualForm.date) && (
+                <div className="p-3.5 bg-amber-500/10 border-2 border-amber-500/30 rounded-2xl flex items-center gap-3 text-amber-300 text-xs font-bold animate-in fade-in">
+                  <span className="text-base">⚠️</span>
+                  <div>
+                    <span className="text-[10px] uppercase block tracking-wider text-amber-400 font-black">Atenção - Feriado Nacional</span>
+                    <span>{getBrazilianHoliday(manualForm.date)}</span>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-5">
                 <div className="space-y-2">
