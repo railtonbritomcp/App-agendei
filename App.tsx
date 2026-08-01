@@ -236,6 +236,7 @@ const App: React.FC = () => {
         const { outcome } = await installPromptEvent.userChoice;
         if (outcome === 'accepted') {
           setShowInstallBanner(false);
+          localStorage.setItem('agendavoz_install_dismissed', 'true');
         }
       } catch (e) {
         console.error("Erro ao instalar:", e);
@@ -245,6 +246,8 @@ const App: React.FC = () => {
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
       if (isIOS) {
         setIsIOSModalOpen(true);
+      } else {
+        alert("Para instalar o aplicativo na tela inicial, clique no menu do seu navegador (três pontos) e selecione 'Adicionar à Tela Inicial' ou 'Instalar aplicativo'.");
       }
     }
   };
