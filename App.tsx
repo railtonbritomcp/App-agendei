@@ -154,6 +154,12 @@ const App: React.FC = () => {
   const [isPro, setIsPro] = useState(false); // Simulando estado de usuário free/pro
   const [recordingTimer, setRecordingTimer] = useState<{id: string, time: number, isRecording: boolean} | null>(null);
   const [activeTab, setActiveTab] = useState('home');
+  const [theme, setTheme] = useState(() => localStorage.getItem('app-theme') || 'default');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('app-theme', theme);
+  }, [theme]);
   const [mirrorId, setMirrorId] = useState<string | null>(() => {
     return localStorage.getItem('agendavoz_mirror_id');
   });
@@ -1253,6 +1259,36 @@ _Enviado via AGENDEI IA_
 
              <div className="glass-panel p-5 rounded-2xl border-2 border-white/5">
                 <h3 className="text-[11px] font-black text-[#FDD835] uppercase mb-4 tracking-widest">Preferências</h3>
+
+                <div className="flex justify-between items-center bg-[#112240] p-4 rounded-xl mb-3">
+                  <div>
+                    <p className="text-sm font-bold text-white uppercase">Aparência</p>
+                  </div>
+                  <select 
+                    value={theme} 
+                    onChange={e => setTheme(e.target.value)}
+                    className="bg-[#0A1526] text-white text-xs p-2 uppercase font-bold tracking-widest rounded border border-[#233559]"
+                  >
+                    <option value="default">Padrão</option>
+                    <option value="obsidian">Obsidian</option>
+                    <option value="forest">Forest</option>
+                    <option value="wine">Wine</option>
+                    <option value="light">Claro</option>
+                  </select>
+                </div>
+
+                <div className="bg-[var(--bg-card)] p-5 rounded-3xl border border-[var(--border-subtle)] hover:border-[var(--brand)] transition-colors mb-3">
+                   <div className="flex justify-between items-center mb-3">
+                     <h4 className="text-[var(--text-main)] font-semibold uppercase">Exemplo de Tema</h4>
+                     <span className="text-[var(--text-muted)] text-[10px] uppercase font-bold bg-[var(--bg-panel-alt)] px-2 py-1 rounded-md border border-[var(--border-subtle)]">
+                       09:00
+                     </span>
+                   </div>
+                   <p className="text-[var(--text-muted)] text-[11px] mt-1">Pré-visualização do tema atual selecionado.</p>
+                   <button className="mt-4 w-full bg-[var(--brand)] text-[var(--text-inv)] font-semibold uppercase py-2 rounded-xl">
+                     Ver Detalhes
+                   </button>
+                </div>
                 
                 <div className="flex justify-between items-center bg-[#112240] p-4 rounded-xl mb-3">
                   <div>
