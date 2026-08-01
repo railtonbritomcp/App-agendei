@@ -239,15 +239,12 @@ const App: React.FC = () => {
         }
       } catch (e) {
         console.error("Erro ao instalar:", e);
-        alert("Não foi possível instalar automaticamente. Para instalar, abra o menu do seu navegador e selecione 'Adicionar à Tela Inicial'.");
       }
       setInstallPromptEvent(null);
     } else {
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
       if (isIOS) {
         setIsIOSModalOpen(true);
-      } else {
-        alert("Para instalar, abra o menu do seu navegador e selecione 'Adicionar à Tela Inicial'.");
       }
     }
   };
@@ -942,7 +939,7 @@ _Enviado via AGENDEI IA_
         </div>
       )}
 
-    <div className="min-h-screen flex flex-col pb-44 px-4 sm:px-6 md:px-8 max-w-2xl mx-auto w-full">
+    <div className="min-h-screen flex flex-col pb-44 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full">
       <header className="pt-8 pb-4 flex flex-col items-center relative w-full">
         <div className="mb-3 relative">
           <div className="w-[72px] h-[72px] bg-[#1A2B4C] border-2 border-[#FDD835] rounded-full flex items-center justify-center text-white shadow-[0_0_20px_rgba(253,216,53,0.4)]">
@@ -956,23 +953,7 @@ _Enviado via AGENDEI IA_
         <h1 className="text-[46px] sm:text-[58px] font-black logo-executive leading-none tracking-tighter text-center mt-2 text-[#FDD835]">AGENDEI</h1>
         <p className="text-[10.5px] sm:text-[11.5px] font-black text-white uppercase tracking-[0.3em] sm:tracking-[0.4em] mt-1.5 text-center">Agendamento Inteligente</p>
 
-        <div className="flex items-center justify-center gap-2 mt-3">
-          <button 
-            onClick={() => {
-              if (installPromptEvent) {
-                installPromptEvent.prompt();
-              } else if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream) {
-                setIsIOSModalOpen(true);
-              } else {
-                setShowInstallBanner(true);
-              }
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#1A2B4C] border border-[#FDD835]/40 rounded-full text-[9px] font-black text-[#FDD835] uppercase tracking-widest hover:bg-[#FDD835] hover:text-black transition-all shadow-sm"
-            title="Instalar Aplicativo com Ícone Oficial"
-          >
-            <Download size={12} /> Instalar Aplicativo (PWA)
-          </button>
-        </div>
+
 
         {!isPro && (
           <button 
@@ -1643,7 +1624,7 @@ _Enviado via AGENDEI IA_
       <RarbCodingLogo />
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-black border-t border-white/10 pb-6 pt-3 px-8 flex justify-between items-center z-50 max-w-2xl mx-auto">
+      <nav className="fixed bottom-0 left-0 right-0 bg-black border-t border-white/10 pb-6 pt-3 px-8 flex justify-between items-center z-50 max-w-7xl mx-auto">
         <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-[#FDD835]' : 'text-[#9E9E9E] hover:text-white'}`}>
           <Home size={28} strokeWidth={2.5} />
           <span className="text-[11px] font-bold">Início</span>
