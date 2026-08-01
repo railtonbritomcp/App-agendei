@@ -1057,7 +1057,7 @@ _Enviado via AGENDEI IA_
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <section className="lg:col-span-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <section className="lg:col-span-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <CalendarView 
                 appointments={appointments} 
                 selectedDate={selectedDate} 
@@ -1067,7 +1067,7 @@ _Enviado via AGENDEI IA_
               />
             </section>
 
-            <section className="lg:col-span-6 space-y-3 w-full">
+            <section className="lg:col-span-7 space-y-3 w-full">
               <div className="flex items-center justify-between px-1 sm:px-2">
                 <div className="flex items-center gap-2 sm:gap-3">
                   <div className="w-2 h-5 bg-[#FDD835] rounded-full shadow-[0_0_15px_rgba(253,216,53,0.3)]"></div>
@@ -1090,9 +1090,9 @@ _Enviado via AGENDEI IA_
                 </div>
               </div>
 
-              <div className="space-y-3 w-full">
+              <div className={selectedDayAppointments.length === 0 ? "w-full" : "grid grid-cols-1 md:grid-cols-2 gap-3 w-full"}>
                 {selectedDayAppointments.length === 0 ? (
-                  <div className="py-20 glass-panel rounded-[2.5rem] flex flex-col items-center justify-center border-dashed border-2 border-white/10">
+                  <div className="py-20 glass-panel rounded-[2.5rem] flex flex-col items-center justify-center border-dashed border-2 border-white/10 w-full">
                     <LayoutGrid size={36} className="mb-4 text-[#FDD835]/20" />
                     <p className="text-[11.5px] font-black uppercase tracking-[0.4em] text-white/30">Nada agendado</p>
                   </div>
