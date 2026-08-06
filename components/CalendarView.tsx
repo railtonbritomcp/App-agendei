@@ -1,5 +1,5 @@
 import React from 'react';
-import { Appointment } from '../types';
+import { Appointment } from '../src/types';
 import { 
   format, 
   endOfMonth, 

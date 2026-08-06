@@ -3,23 +3,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0A1931">
+    <meta name="description" content="Agendei - Assistente de Voz Inteligente">
     <title>Agendei | Executive</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script>
-      try {
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            for(let registration of registrations) {
-              registration.unregister();
-            }
-          }).catch(e => console.error(e));
-        }
-      } catch(e) {}
-      try {
-        caches.keys().then((keyList) => {
-          return Promise.all(keyList.map((key) => caches.delete(key)));
-        }).catch(e => console.error(e));
-      } catch(e) {}
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+          }
+        });
+      }
+      caches.keys().then((keyList) => {
+        return Promise.all(keyList.map((key) => caches.delete(key)));
+      });
     </script>
     <style>
         :root {
@@ -36,11 +33,10 @@
             color: #FFFFFF;
             min-height: 100vh;
             overflow-x: hidden;
-            margin: 0;
-            padding: 0;
         }
         #root {
             height: 100%;
+            -webkit-overflow-scrolling: touch;
         }
         .mesh-bg {
             position: fixed;

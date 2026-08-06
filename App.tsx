@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Appointment, MeetingReport } from './types';
+import { Appointment, MeetingReport } from './src/types';
 import CalendarView from './components/CalendarView';
 import VoiceAssistant from './components/VoiceAssistant';
 import MeetingManager from './components/MeetingManager';
@@ -39,74 +39,6 @@ const RarbCodingLogo = () => (
     </div>
   </div>
 );
-
-function getEasterDate(year: number): Date {
-  const a = year % 19;
-  const b = Math.floor(year / 100);
-  const c = year % 100;
-  const d = Math.floor(b / 4);
-  const e = b % 4;
-  const f = Math.floor((b + 8) / 25);
-  const g = Math.floor((b - f + 1) / 3);
-  const h = (19 * a + b - d - g + 15) % 30;
-  const i = Math.floor(c / 4);
-  const k = c % 4;
-  const L = (32 + 2 * e + 2 * i - h - k) % 7;
-  const m = Math.floor((a + 11 * h + 22 * L) / 451);
-  const month = Math.floor((h + L - 7 * m + 114) / 31);
-  const day = ((h + L - 7 * m + 114) % 31) + 1;
-  return new Date(year, month - 1, day);
-}
-
-function getBrazilianHoliday(dateStr: string): string | null {
-  if (!dateStr) return null;
-  const parts = dateStr.split('-');
-  if (parts.length !== 3) return null;
-  const year = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10);
-  const day = parseInt(parts[2], 10);
-  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
-
-  const dateKey = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-  const fixedHolidays: Record<string, string> = {
-    '01-01': 'Confraternização Universal (Ano Novo)',
-    '04-21': 'Tiradentes',
-    '05-01': 'Dia do Trabalho',
-    '09-07': 'Independência do Brasil',
-    '10-12': 'Nossa Senhora Aparecida',
-    '11-02': 'Finados',
-    '11-15': 'Proclamação da República',
-    '11-20': 'Dia Nacional de Zumbi e da Consciência Negra',
-    '12-25': 'Natal',
-  };
-
-  if (fixedHolidays[dateKey]) {
-    return fixedHolidays[dateKey];
-  }
-
-  const easter = getEasterDate(year);
-  const goodFriday = new Date(easter);
-  goodFriday.setDate(easter.getDate() - 2);
-  
-  const carnival = new Date(easter);
-  carnival.setDate(easter.getDate() - 47);
-
-  const corpusChristi = new Date(easter);
-  corpusChristi.setDate(easter.getDate() + 60);
-
-  const checkDate = new Date(year, month - 1, day);
-  const isSameDay = (d1: Date, d2: Date) => 
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate();
-
-  if (isSameDay(checkDate, carnival)) return 'Carnaval (Terça-feira)';
-  if (isSameDay(checkDate, goodFriday)) return 'Sexta-feira Santa (Paixão de Cristo)';
-  if (isSameDay(checkDate, corpusChristi)) return 'Corpus Christi';
-
-  return null;
-}
 
 const App: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>(() => {
@@ -154,12 +86,6 @@ const App: React.FC = () => {
   const [isPro, setIsPro] = useState(false); // Simulando estado de usuário free/pro
   const [recordingTimer, setRecordingTimer] = useState<{id: string, time: number, isRecording: boolean} | null>(null);
   const [activeTab, setActiveTab] = useState('home');
-  const [theme, setTheme] = useState(() => localStorage.getItem('app-theme') || 'default');
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('app-theme', theme);
-  }, [theme]);
   const [mirrorId, setMirrorId] = useState<string | null>(() => {
     return localStorage.getItem('agendavoz_mirror_id');
   });
@@ -295,7 +221,7 @@ const App: React.FC = () => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
     const hasDismissed = localStorage.getItem('agendavoz_install_dismissed');
 
-    if (!isStandalone && !hasDismissed) {
+    if (isMobile && !isStandalone && !hasDismissed) {
       const timer = setTimeout(() => {
         setShowInstallBanner(true);
       }, 2000);
@@ -310,10 +236,10 @@ const App: React.FC = () => {
         const { outcome } = await installPromptEvent.userChoice;
         if (outcome === 'accepted') {
           setShowInstallBanner(false);
-          localStorage.setItem('agendavoz_install_dismissed', 'true');
         }
       } catch (e) {
         console.error("Erro ao instalar:", e);
+        alert("Não foi possível instalar automaticamente. Para instalar, abra o menu do seu navegador e selecione 'Adicionar à Tela Inicial'.");
       }
       setInstallPromptEvent(null);
     } else {
@@ -321,7 +247,7 @@ const App: React.FC = () => {
       if (isIOS) {
         setIsIOSModalOpen(true);
       } else {
-        alert("Para instalar o aplicativo na tela inicial, clique no menu do seu navegador (três pontos) e selecione 'Adicionar à Tela Inicial' ou 'Instalar aplicativo'.");
+        alert("Para instalar, abra o menu do seu navegador e selecione 'Adicionar à Tela Inicial'.");
       }
     }
   };
@@ -798,7 +724,7 @@ _Enviado via AGENDEI IA_
     }, {} as Record<string, Appointment[]>);
     
     for (const [date, apps] of Object.entries(grouped)) {
-       text += `\n📅 ${date}:\n` + apps.map(a => `   - ${a.time}: ${a.title}`).join('\n') + `\n`;
+       text += `\n📅 ${date}:\n` + (apps as Appointment[]).map(a => `   - ${a.time}: ${a.title}`).join('\n') + `\n`;
     }
     
     if (navigator.share) {
@@ -900,7 +826,6 @@ _Enviado via AGENDEI IA_
 
   const renderAppCard = (app: Appointment) => {
     const isReport = app.hasReport;
-    const holidayName = getBrazilianHoliday(app.date);
     return (
       <div key={app.id} 
         onClick={() => isReport ? setSelectedReport(reports.find(r => r.appointmentId === app.id) || null) : setActiveAppointmentId(app.id)}
@@ -920,13 +845,6 @@ _Enviado via AGENDEI IA_
             )}
           </div>
           
-          {holidayName && (
-            <div className="flex items-center gap-2 px-2.5 py-1.5 bg-amber-500/15 border border-amber-500/30 rounded-xl text-amber-300 text-[10px] font-bold">
-              <span>⚠️</span>
-              <span><strong>Feriado Nacional:</strong> {holidayName}</span>
-            </div>
-          )}
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 px-2 py-1">
             <div className="flex items-center gap-2">
               <span className="text-[9px] font-black text-white/40 uppercase tracking-wider">Status:</span>
@@ -1024,7 +942,7 @@ _Enviado via AGENDEI IA_
         </div>
       )}
 
-    <div className="min-h-screen flex flex-col pb-44 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full">
+    <div className="min-h-screen flex flex-col pb-44 px-4 sm:px-6 md:px-8 max-w-2xl mx-auto w-full">
       <header className="pt-8 pb-4 flex flex-col items-center relative w-full">
         <div className="mb-3 relative">
           <div className="w-[72px] h-[72px] bg-[#1A2B4C] border-2 border-[#FDD835] rounded-full flex items-center justify-center text-white shadow-[0_0_20px_rgba(253,216,53,0.4)]">
@@ -1038,8 +956,6 @@ _Enviado via AGENDEI IA_
         <h1 className="text-[46px] sm:text-[58px] font-black logo-executive leading-none tracking-tighter text-center mt-2 text-[#FDD835]">AGENDEI</h1>
         <p className="text-[10.5px] sm:text-[11.5px] font-black text-white uppercase tracking-[0.3em] sm:tracking-[0.4em] mt-1.5 text-center">Agendamento Inteligente</p>
 
-
-
         {!isPro && (
           <button 
             onClick={() => setIsSubscriptionModalOpen(true)}
@@ -1049,7 +965,7 @@ _Enviado via AGENDEI IA_
           </button>
         )}
 
-        <button className="absolute top-4 right-0 sm:right-2 flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 glass-panel rounded-full text-[9px] sm:text-[10px] font-black text-white uppercase tracking-widest hover:bg-[#FDD835] hover:text-black transition-colors">
+        <button className="absolute top-4 right-0 sm:right-2 flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 glass-panel rounded-full text-[9px] sm:text-[10px] font-black text-white uppercase tracking-widest hover:bg-[#FDD835] transition-colors">
           <Globe size={13} /> {selectedLang.label}
         </button>
       </header>
@@ -1062,52 +978,50 @@ _Enviado via AGENDEI IA_
             </section>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <section className="lg:col-span-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <CalendarView 
-                appointments={appointments} 
-                selectedDate={selectedDate} 
-                onDateSelect={setSelectedDate} 
-                onDelete={() => {}} 
-                selectedLanguage={selectedLang} 
-              />
-            </section>
+          <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <CalendarView 
+              appointments={appointments} 
+              selectedDate={selectedDate} 
+              onDateSelect={setSelectedDate} 
+              onDelete={() => {}} 
+              selectedLanguage={selectedLang} 
+            />
+          </section>
 
-            <section className="lg:col-span-7 space-y-3 w-full">
-              <div className="flex items-center justify-between px-1 sm:px-2">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="w-2 h-5 bg-[#FDD835] rounded-full shadow-[0_0_15px_rgba(253,216,53,0.3)]"></div>
-                  <h3 className="text-[11.5px] sm:text-[13px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-white">Agenda do Dia</h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  {selectedDayAppointments.length > 0 && (
-                    <>
-                      <button onClick={syncAllToFirestore} className="w-[38px] h-[38px] sm:w-[46px] sm:h-[46px] bg-[#1A2B4C] border border-[#233559] rounded-xl flex items-center justify-center text-white hover:bg-[#233559] shadow-sm transition-all" title="Sincronizar com a Base">
-                        <RefreshCw size={18} className="sm:w-5 sm:h-5 text-blue-400" />
-                      </button>
-                      <button onClick={shareDayAgenda} className="w-[38px] h-[38px] sm:w-[46px] sm:h-[46px] bg-[#1A2B4C] border border-[#233559] rounded-xl flex items-center justify-center text-white hover:bg-[#233559] shadow-sm transition-all" title="Compartilhar Agenda do Dia">
-                        <Share2 size={18} className="sm:w-5 sm:h-5 text-blue-300" />
-                      </button>
-                    </>
-                  )}
-                  <button onClick={openCreateModal} className="w-[46px] h-[46px] sm:w-[55px] sm:h-[55px] bg-[#1A2B4C] border-2 border-[#FDD835] rounded-full btn-press flex items-center justify-center text-white hover:bg-[#FDD835] shadow-md transition-all">
-                    <Plus size={23} strokeWidth={3} className="sm:w-7 sm:h-7" />
-                  </button>
-                </div>
+          <section className="space-y-3 w-full">
+            <div className="flex items-center justify-between px-1 sm:px-2">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-2 h-5 bg-[#FDD835] rounded-full shadow-[0_0_15px_rgba(253,216,53,0.3)]"></div>
+                <h3 className="text-[11.5px] sm:text-[13px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-white">Agenda do Dia</h3>
               </div>
-
-              <div className={selectedDayAppointments.length === 0 ? "w-full" : "grid grid-cols-1 md:grid-cols-2 gap-3 w-full"}>
-                {selectedDayAppointments.length === 0 ? (
-                  <div className="py-20 glass-panel rounded-[2.5rem] flex flex-col items-center justify-center border-dashed border-2 border-white/10 w-full">
-                    <LayoutGrid size={36} className="mb-4 text-[#FDD835]/20" />
-                    <p className="text-[11.5px] font-black uppercase tracking-[0.4em] text-white/30">Nada agendado</p>
-                  </div>
-                ) : (
-                  selectedDayAppointments.map(renderAppCard)
+              <div className="flex items-center gap-2">
+                {selectedDayAppointments.length > 0 && (
+                  <>
+                    <button onClick={syncAllToFirestore} className="w-[38px] h-[38px] sm:w-[46px] sm:h-[46px] bg-[#1A2B4C] border border-[#233559] rounded-xl flex items-center justify-center text-white hover:bg-[#233559] shadow-sm transition-all" title="Sincronizar com a Base">
+                      <RefreshCw size={18} className="sm:w-5 sm:h-5 text-blue-400" />
+                    </button>
+                    <button onClick={shareDayAgenda} className="w-[38px] h-[38px] sm:w-[46px] sm:h-[46px] bg-[#1A2B4C] border border-[#233559] rounded-xl flex items-center justify-center text-white hover:bg-[#233559] shadow-sm transition-all" title="Compartilhar Agenda do Dia">
+                      <Share2 size={18} className="sm:w-5 sm:h-5 text-blue-300" />
+                    </button>
+                  </>
                 )}
+                <button onClick={openCreateModal} className="w-[46px] h-[46px] sm:w-[55px] sm:h-[55px] bg-[#1A2B4C] border-2 border-[#FDD835] rounded-full btn-press flex items-center justify-center text-white hover:bg-[#FDD835] shadow-md transition-all">
+                  <Plus size={23} strokeWidth={3} className="sm:w-7 sm:h-7" />
+                </button>
               </div>
-            </section>
-          </div>
+            </div>
+
+            <div className="space-y-3 w-full">
+              {selectedDayAppointments.length === 0 ? (
+                <div className="py-20 glass-panel rounded-[2.5rem] flex flex-col items-center justify-center border-dashed border-2 border-white/10">
+                  <LayoutGrid size={36} className="mb-4 text-[#FDD835]/20" />
+                  <p className="text-[11.5px] font-black uppercase tracking-[0.4em] text-white/30">Nada agendado</p>
+                </div>
+              ) : (
+                selectedDayAppointments.map(renderAppCard)
+              )}
+            </div>
+          </section>
         </main>
       ) : activeTab === 'agenda' ? (
         <main className="flex-1 flex flex-col pt-8 pb-20 px-2 animate-in fade-in duration-500">
@@ -1259,36 +1173,6 @@ _Enviado via AGENDEI IA_
 
              <div className="glass-panel p-5 rounded-2xl border-2 border-white/5">
                 <h3 className="text-[11px] font-black text-[#FDD835] uppercase mb-4 tracking-widest">Preferências</h3>
-
-                <div className="flex justify-between items-center bg-[#112240] p-4 rounded-xl mb-3">
-                  <div>
-                    <p className="text-sm font-bold text-white uppercase">Aparência</p>
-                  </div>
-                  <select 
-                    value={theme} 
-                    onChange={e => setTheme(e.target.value)}
-                    className="bg-[#0A1526] text-white text-xs p-2 uppercase font-bold tracking-widest rounded border border-[#233559]"
-                  >
-                    <option value="default">Padrão</option>
-                    <option value="obsidian">Obsidian</option>
-                    <option value="forest">Forest</option>
-                    <option value="wine">Wine</option>
-                    <option value="light">Claro</option>
-                  </select>
-                </div>
-
-                <div className="bg-[var(--bg-card)] p-5 rounded-3xl border border-[var(--border-subtle)] hover:border-[var(--brand)] transition-colors mb-3">
-                   <div className="flex justify-between items-center mb-3">
-                     <h4 className="text-[var(--text-main)] font-semibold uppercase">Exemplo de Tema</h4>
-                     <span className="text-[var(--text-muted)] text-[10px] uppercase font-bold bg-[var(--bg-panel-alt)] px-2 py-1 rounded-md border border-[var(--border-subtle)]">
-                       09:00
-                     </span>
-                   </div>
-                   <p className="text-[var(--text-muted)] text-[11px] mt-1">Pré-visualização do tema atual selecionado.</p>
-                   <button className="mt-4 w-full bg-[var(--brand)] text-[var(--text-inv)] font-semibold uppercase py-2 rounded-xl">
-                     Ver Detalhes
-                   </button>
-                </div>
                 
                 <div className="flex justify-between items-center bg-[#112240] p-4 rounded-xl mb-3">
                   <div>
@@ -1416,16 +1300,6 @@ _Enviado via AGENDEI IA_
                    <input type="time" className="w-full bg-[#1A2B4C] border-2 border-[#233559] rounded-2xl px-6 py-4 text-xs font-bold text-white" value={manualForm.time} onChange={e => setManualForm({...manualForm, time: e.target.value})} required />
                 </div>
               </div>
-
-              {getBrazilianHoliday(manualForm.date) && (
-                <div className="p-3.5 bg-amber-500/10 border-2 border-amber-500/30 rounded-2xl flex items-center gap-3 text-amber-300 text-xs font-bold animate-in fade-in">
-                  <span className="text-base">⚠️</span>
-                  <div>
-                    <span className="text-[10px] uppercase block tracking-wider text-amber-400 font-black">Atenção - Feriado Nacional</span>
-                    <span>{getBrazilianHoliday(manualForm.date)}</span>
-                  </div>
-                </div>
-              )}
 
               <div className="grid grid-cols-2 gap-5">
                 <div className="space-y-2">
@@ -1749,7 +1623,7 @@ _Enviado via AGENDEI IA_
       <RarbCodingLogo />
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-black border-t border-white/10 pb-6 pt-3 px-8 flex justify-between items-center z-50 max-w-7xl mx-auto">
+      <nav className="fixed bottom-0 left-0 right-0 bg-black border-t border-white/10 pb-6 pt-3 px-8 flex justify-between items-center z-50 max-w-2xl mx-auto">
         <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-[#FDD835]' : 'text-[#9E9E9E] hover:text-white'}`}>
           <Home size={28} strokeWidth={2.5} />
           <span className="text-[11px] font-bold">Início</span>

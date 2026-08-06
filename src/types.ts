@@ -1,62 +1,33 @@
-export interface CandidateConfig {
-  candidateName: string;
-  ballotNumber: string;
-  activationCode: string;
-  activated: boolean;
-  party?: string;
-  office?: string; // e.g. "Deputado Estadual", "Vereador", "Prefeito"
-}
 
-export interface UF {
+export interface Appointment {
   id: string;
-  name: string;
-  code: string; // e.g. "SP", "RJ", "MG"
+  title: string;
+  date: string;
+  time: string;
+  duration: number;
+  description?: string;
+  location?: string;
+  category?: 'Trabalho' | 'Pessoal' | 'Urgente' | 'Reunião' | string;
+  potentialConflict?: boolean;
+  hasReport?: boolean;
+  reminders?: number[]; // Array of minutes before the event
+  callAlert?: boolean;
 }
 
-export interface Municipality {
+export interface MeetingReport {
   id: string;
-  ufId: string;
-  name: string;
+  appointmentId: string;
+  timestamp: string;
+  markdownReport: string;
+  fullTranscript?: string;
 }
 
-export interface Neighborhood {
-  id: string;
-  municipalityId: string;
-  name: string;
-}
-
-export interface Leader {
-  id: string;
-  name: string;
-  phone: string;
-  uf: string;
-  municipalityId: string;
-  neighborhoodId: string;
-  macroGoal: number; // Meta Macro of votes committed by leader
-  notes?: string;
-  createdAt: string;
-}
-
-export interface Supporter {
-  id: string;
-  name: string;
-  phone: string;
-  uf: string;
-  municipalityId: string;
-  neighborhoodId: string;
-  leaderId: string; // Linked Leader
-  microGoal: number; // Meta Micro (vote commitment, usually 1 to N family/friends)
-  status: 'Confirmado' | 'Pendente' | 'Indeciso' | 'Convertido';
-  voted?: boolean;
-  notes?: string;
-  createdAt: string;
-}
-
-export interface FilterState {
-  uf: string;
-  municipalityId: string;
-  neighborhoodId: string;
-  leaderId: string;
-  status: string;
-  search: string;
+export enum VoiceState {
+  IDLE = 'IDLE',
+  CONNECTING = 'CONNECTING',
+  LISTENING = 'LISTENING',
+  SPEAKING = 'SPEAKING',
+  RECORDING = 'RECORDING',
+  PROCESSING = 'PROCESSING',
+  ERROR = 'ERROR'
 }

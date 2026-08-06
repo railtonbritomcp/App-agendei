@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { VoiceState, MeetingReport, Appointment } from '../types';
+import { VoiceState, MeetingReport, Appointment } from '../src/types';
 import { Mic, Square, CheckCircle, Loader2, Sparkles, RefreshCcw, XCircle, Pause, Play } from 'lucide-react';
 
 interface MeetingManagerProps {

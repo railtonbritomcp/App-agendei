@@ -1,115 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
-}
-
-:root {
-  /* Default/Original (Azul Escuro) */
-  --bg-gradient: linear-gradient(135deg, #0A1931, #0A1526, #1A2B4C);
-  --bg-panel: #0A1931;
-  --bg-panel-alt: #0A1526;
-  --bg-card: #1A2B4C;
-  --bg-card-alt: #112240;
-  --bg-hover: #233559;
-  --border-color: #233559;
-  --border-subtle: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.2);
-  --text-main: #FFFFFF;
-  --text-muted: rgba(255, 255, 255, 0.6);
-  --text-inv: #1A2B4C;
-  --brand: #FDD835;
-  --brand-hover: #D4AF37;
-}
-
-[data-theme="obsidian"] {
-  --bg-gradient: linear-gradient(135deg, #020617, #0f172a, #1e293b);
-  --bg-panel: #0f172a;
-  --bg-panel-alt: #020617;
-  --bg-card: #1e293b;
-  --bg-card-alt: #0f172a;
-  --bg-hover: #334155;
-  --border-color: #334155;
-  --border-subtle: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.2);
-  --text-main: #FFFFFF;
-  --text-muted: rgba(255, 255, 255, 0.6);
-  --text-inv: #1e293b;
-  --brand: #0ea5e9;
-  --brand-hover: #0284c7;
-}
-
-[data-theme="forest"] {
-  --bg-gradient: linear-gradient(135deg, #022c22, #064e3b, #065f46);
-  --bg-panel: #022c22;
-  --bg-panel-alt: #012119;
-  --bg-card: #064e3b;
-  --bg-card-alt: #065f46;
-  --bg-hover: #10b981;
-  --border-color: #10b981;
-  --border-subtle: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.2);
-  --text-main: #FFFFFF;
-  --text-muted: rgba(255, 255, 255, 0.6);
-  --text-inv: #064e3b;
-  --brand: #34d399;
-  --brand-hover: #059669;
-}
-
-[data-theme="wine"] {
-  --bg-gradient: linear-gradient(135deg, #2e0310, #4c0519, #881337);
-  --bg-panel: #2e0310;
-  --bg-panel-alt: #1a0108;
-  --bg-card: #4c0519;
-  --bg-card-alt: #881337;
-  --bg-hover: #9f1239;
-  --border-color: #9f1239;
-  --border-subtle: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.2);
-  --text-main: #FFFFFF;
-  --text-muted: rgba(255, 255, 255, 0.6);
-  --text-inv: #4c0519;
-  --brand: #f43f5e;
-  --brand-hover: #e11d48;
-}
-
-[data-theme="light"] {
-  --bg-gradient: #F8FAFC;
-  --bg-panel: #FFFFFF;
-  --bg-panel-alt: #F1F5F9;
-  --bg-card: #FFFFFF;
-  --bg-card-alt: #F8FAFC;
-  --bg-hover: #F1F5F9;
-  --border-color: #E2E8F0;
-  --border-subtle: rgba(0, 0, 0, 0.05);
-  --border-strong: rgba(0, 0, 0, 0.1);
-  --text-main: #1E293B;
-  --text-muted: #64748B;
-  --text-inv: #FFFFFF;
-  --brand: #D97706; /* amber-600 */
-  --brand-hover: #B45309; /* amber-700 */
-}
-
 /* Global Styles */
+
 body {
   margin: 0;
   padding: 0;
-  font-family: "Outfit", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: var(--bg-gradient);
-  background-attachment: fixed;
-  min-height: 100vh;
-  color: var(--text-main);
-  transition: background 0.3s ease, color 0.3s ease;
+  background-color: #0A1931;
+  color: white;
 }
 
 /* Markdown Styles */
 .markdown-body h2 {
   font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--brand);
+  font-weight: 800;
+  color: #FFD700;
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
   text-transform: uppercase;
@@ -118,8 +27,8 @@ body {
 
 .markdown-body h3 {
   font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-main);
+  font-weight: 700;
+  color: #FFF;
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
 }
@@ -140,35 +49,12 @@ body {
 }
 
 .markdown-body strong {
-  font-weight: 600;
-  color: var(--text-main);
+  font-weight: 700;
+  color: #FFF;
 }
 
 .markdown-body hr {
   border: 0;
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid rgba(255, 215, 0, 0.2);
   margin: 2rem 0;
-}
-
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--brand);
-}
-
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-color) transparent;
 }

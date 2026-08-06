@@ -1,5 +1,5 @@
 
-import { Appointment } from '../types';
+import { Appointment } from '../src/types';
 import { isAfter, parse, addMinutes, startOfMinute } from 'date-fns';
 
 /**

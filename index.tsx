@@ -13,15 +13,12 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
     super(props);
     this.state = { hasError: false, error: null };
   }
-
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
   }
-
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Erro capturado pelo Boundary:", error, errorInfo);
   }
-
   render() {
     if (this.state.hasError) {
       return (
@@ -43,12 +40,10 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
     return this.props.children;
   }
 }
-
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error("Elemento root não encontrado.");
 }
-
 // Global error handling
 const isBenignViteError = (message: string, stack?: string) => {
   const msgLower = (message || '').toLowerCase();
@@ -64,7 +59,6 @@ const isBenignViteError = (message: string, stack?: string) => {
     msgLower.includes('closed without opened')
   );
 };
-
 const showFatalError = (message: string, stack?: string) => {
   if (isBenignViteError(message, stack)) return;
   if (document.getElementById('fatal-error-overlay')) return;
@@ -83,7 +77,6 @@ const showFatalError = (message: string, stack?: string) => {
   `;
   document.body.appendChild(errDiv);
 };
-
 window.addEventListener('error', (event) => {
   const msg = event.message || '';
   const stack = event.error?.stack || '';
@@ -94,7 +87,6 @@ window.addEventListener('error', (event) => {
   console.error("Erro Global:", event.error);
   showFatalError(msg, stack);
 });
-
 window.addEventListener('unhandledrejection', (event) => {
   const reasonStr = event.reason?.stack || String(event.reason || '');
   if (isBenignViteError(reasonStr, reasonStr)) {
@@ -104,7 +96,6 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error("Rejeição não tratada:", event.reason);
   showFatalError("Falha Assíncrona", reasonStr);
 });
-
 // Mounting
 const root = ReactDOM.createRoot(rootElement);
 root.render(
@@ -119,7 +110,6 @@ root.render(
     </ErrorBoundary>
   </React.StrictMode>
 );
-
 // Watchdog: If app doesn't mount in 5s, show recovery
 window.onload = () => {
   setTimeout(() => {
@@ -129,7 +119,6 @@ window.onload = () => {
     }
   }, 6000);
 };
-
 // Service Worker Registration
 const updateSW = registerSW({
   onNeedRefresh() {
@@ -141,4 +130,3 @@ const updateSW = registerSW({
     console.log("App pronto para uso offline!");
   },
 });
-

@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { VoiceState, Appointment } from '../types';
+import { VoiceState, Appointment } from '../src/types';
 import { Mic, MicOff, Loader2, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 

@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 
 export const isFirebaseConfigured = !!import.meta.env.VITE_FIREBASE_PROJECT_ID;
 
@@ -22,7 +22,25 @@ Object.entries(firebaseConfig).forEach(([key, value]) => {
 const app = initializeApp(firebaseConfig);
 const databaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID;
 
-// Enable robust offline persistence so writes queue up and sync automatically
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
-}, databaseId);
+let dbInstance: any;
+
+try {
+  // Try to enable robust offline persistence so writes queue up and sync automatically
+  dbInstance = initializeFirestore(app, {
+    localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+  }, databaseId);
+} catch (error) {
+  console.warn("Offline persistence not supported or blocked in this environment (e.g., iframe), falling back to standard Firestore:", error);
+  try {
+    dbInstance = getFirestore(app, databaseId);
+  } catch (err2) {
+    console.error("Critical: Failed to initialize Firestore entirely, using mock instance:", err2);
+    dbInstance = {
+      collection: () => ({ doc: () => ({ set: () => Promise.resolve() }) }),
+      doc: () => ({ set: () => Promise.resolve(), delete: () => Promise.resolve(), update: () => Promise.resolve() })
+    } as any;
+  }
+}
+
+export const db = dbInstance;
+
